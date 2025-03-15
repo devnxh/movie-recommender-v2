@@ -29,7 +29,7 @@ TMDB_API_KEY = "f3ca028bc7f9a25f5613839a01f600df"
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
 # Check if we're in production (Vercel) or development
-IS_PRODUCTION = os.environ.get('VERCEL', False)
+IS_PRODUCTION = os.environ.get('VERCEL', False) or os.environ.get('RENDER', False)
 
 # Load data at startup
 def load_data():
