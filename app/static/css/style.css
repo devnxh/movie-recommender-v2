@@ -211,8 +211,9 @@ body {
 }
 
 .view-details {
-    transform: translateY(20px);
+    transform: translateY(0);
     transition: transform 0.3s ease;
+    margin-right: 5px;
 }
 
 .movie-card:hover .view-details {
@@ -519,19 +520,24 @@ footer {
 .overlay-content {
     position: absolute;
     top: 50%;
-    left: 0;
-    right: 0;
-    transform: translateY(-50%);
+    left: 50%;
+    transform: translate(-50%, -50%);
     text-align: center;
+    width: 80%;
     opacity: 0;
-    transition: opacity 0.4s ease, transform 0.4s ease;
-    transform: translateY(20px);
-    padding: 0 15px;
+    transition: opacity 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .card-img-container:hover .overlay-content {
     opacity: 1;
-    transform: translateY(-50%);
+}
+
+.view-details-overlay {
+    margin-bottom: 10px;
+    width: 100%;
 }
 
 .movie-card {
@@ -796,4 +802,17 @@ footer {
     font-size: 0.8rem;
     color: white;
     z-index: 2;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+}
+
+.card-footer .btn {
+    flex: 1;
+    margin: 0 3px;
+    white-space: nowrap;
 } 
