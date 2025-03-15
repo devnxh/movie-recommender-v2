@@ -290,6 +290,7 @@ def search():
     """Search for movies by title"""
     data = request.get_json()
     query = data.get('query', '')
+    page = data.get('page', 1)
     
     if not query:
         return jsonify([])
@@ -300,8 +301,13 @@ def search():
     if len(matches) == 0:
         return jsonify([])
     
-    # Get the top 5 matches
-    top_matches = matches.sort_values('vote_count', ascending=False).head(5)
+    # Get the top matches, paginated
+    items_per_page = 12
+    start_idx = (page - 1) * items_per_page
+    end_idx = start_idx + items_per_page
+    
+    # Sort by vote count and get the slice for the current page
+    top_matches = matches.sort_values('vote_count', ascending=False).iloc[start_idx:end_idx]
     
     # Convert to list of dictionaries
     results = top_matches[['title', 'vote_average', 'genres', 'poster_path', 'overview']].to_dict(orient='records')
@@ -374,6 +380,10 @@ def movies():
     """Get a list of movies, optionally filtered by genre"""
     try:
         genre = request.args.get('genre', None)
+        page = int(request.args.get('page', 1))
+        items_per_page = 12
+        start_idx = (page - 1) * items_per_page
+        end_idx = start_idx + items_per_page
         
         if genre:
             # Filter by genre
@@ -383,14 +393,14 @@ def movies():
                 filtered_movies = filtered_movies.sort_values('popularity', ascending=False)
             else:
                 filtered_movies = filtered_movies.sort_values('vote_count', ascending=False)
-            # Get top 12 movies
-            top_movies = filtered_movies.head(12)
+            # Get paginated movies
+            paginated_movies = filtered_movies.iloc[start_idx:end_idx]
         else:
-            # Get top movies by vote count
-            top_movies = movies_df.sort_values('vote_count', ascending=False).head(12)
+            # Get top movies by vote count, paginated
+            paginated_movies = movies_df.sort_values('vote_count', ascending=False).iloc[start_idx:end_idx]
         
         # Convert to list of dictionaries
-        results = top_movies[['title', 'vote_average', 'genres', 'poster_path', 'overview']].to_dict(orient='records')
+        results = paginated_movies[['title', 'vote_average', 'genres', 'poster_path', 'overview']].to_dict(orient='records')
         
         # Enhance with TMDB details
         enhanced_results = []

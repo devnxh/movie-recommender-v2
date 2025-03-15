@@ -8,6 +8,13 @@ $(document).ready(function() {
     const doneTypingInterval = 300; // Time in ms after user stops typing
     let watchlist = [];
     
+    // Pagination variables
+    let currentPage = 1;
+    let currentSearchTerm = '';
+    let currentGenre = '';
+    let isSearchActive = false;
+    let isGenreFilterActive = false;
+    
     // Event Listeners
     $('#search-button').on('click', searchMovies);
     $('#search-input').on('keypress', function(e) {
@@ -75,6 +82,13 @@ $(document).ready(function() {
             // Deactivate other genres
             $('.genre-icon').not(this).removeClass('active');
             
+            // Reset pagination
+            currentPage = 1;
+            currentSearchTerm = '';
+            isSearchActive = false;
+            isGenreFilterActive = true;
+            currentGenre = genre;
+            
             // Show loading
             showLoading(`Loading ${genre} movies...`);
             updateProgress(20);
@@ -84,7 +98,7 @@ $(document).ready(function() {
             
             // Get movies by genre
             $.ajax({
-                url: `/movies?genre=${genre}`,
+                url: `/movies?genre=${genre}&page=${currentPage}`,
                 method: 'GET',
                 success: function(data) {
                     updateProgress(100);
@@ -104,14 +118,12 @@ $(document).ready(function() {
                 error: function(xhr, status, error) {
                     hideLoading();
                     console.error("Genre filter error:", error);
+                    alert('An error occurred while loading movies. Please try again later.');
                 }
             });
         } else {
-            // If no genre is selected, show all top movies
+            // If no genre is selected, show all movies
             browseMovies();
-            
-            // Show default movies section again
-            $('#default-movies-section').removeClass('d-none');
         }
     });
     
@@ -431,11 +443,25 @@ $(document).ready(function() {
         $('#default-movies-section').removeClass('d-none').addClass('animate__animated animate__fadeIn');
     }
     
-    function searchMovies() {
+    function searchMovies(page = 1) {
         const searchTerm = $('#search-input').val().trim();
         
         if (searchTerm === '') {
             return;
+        }
+        
+        // Reset pagination if this is a new search
+        if (searchTerm !== currentSearchTerm || page === 1) {
+            currentPage = 1;
+            currentSearchTerm = searchTerm;
+            isSearchActive = true;
+            isGenreFilterActive = false;
+            currentGenre = '';
+        }
+        
+        // If loading more, increment the page
+        if (page > 1) {
+            currentPage = page;
         }
         
         // Show loading
@@ -450,7 +476,10 @@ $(document).ready(function() {
             url: '/search',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ query: searchTerm }),
+            data: JSON.stringify({ 
+                query: searchTerm,
+                page: currentPage
+            }),
             success: function(data) {
                 updateProgress(100);
                 
@@ -458,7 +487,7 @@ $(document).ready(function() {
                 hideLoading();
                 
                 // Display search results
-                displaySearchResults(data);
+                displaySearchResults(data, page > 1);
             },
             error: function(xhr, status, error) {
                 hideLoading();
@@ -468,36 +497,59 @@ $(document).ready(function() {
         });
     }
     
-    function displaySearchResults(results) {
+    function displaySearchResults(results, append = false) {
         const searchResults = $('#search-results');
-        searchResults.empty();
+        
+        // Clear results if not appending
+        if (!append) {
+            searchResults.empty();
+        } else {
+            // Remove load more button if it exists
+            $('#load-more-btn-container').remove();
+        }
         
         if (results.length === 0) {
-            searchResults.append('<p class="text-center">No movies found. Try a different search term.</p>');
+            if (!append) {
+                searchResults.append('<p class="text-center">No movies found. Try a different search term.</p>');
+            } else {
+                // If appending and no results, show "no more results" message
+                searchResults.append('<div id="load-more-btn-container" class="col-12 text-center mt-3 mb-5"><p>No more movies to load.</p></div>');
+            }
         } else {
-            // Create a row for movie cards
-            const row = $('<div class="row"></div>');
+            // Create a row for movie cards if not appending
+            let row;
+            if (!append) {
+                row = $('<div class="row"></div>');
+                searchResults.append(row);
+            } else {
+                row = searchResults.find('.row').first();
+            }
             
+            // Add movie cards to the row
             results.forEach(function(movie, index) {
-                // Create movie card with animation
-                const card = createMovieCard(movie).addClass('animate__animated animate__fadeInUp');
-                
-                // Add animation delay based on index
-                card.css('animation-delay', (index * 100) + 'ms');
-                
+                const card = createMovieCard(movie);
                 row.append(card);
             });
             
-            searchResults.append(row);
+            // Add "Load More" button
+            const loadMoreBtn = $(`
+                <div id="load-more-btn-container" class="col-12 text-center mt-3 mb-5">
+                    <button id="load-more-btn" class="btn btn-outline-primary">
+                        <i class="fas fa-plus"></i> Load More Movies
+                    </button>
+                </div>
+            `);
+            
+            searchResults.append(loadMoreBtn);
+            
+            // Add event listener to load more button
+            $('#load-more-btn').on('click', function() {
+                loadMoreMovies();
+            });
+            
+            // Show the search results
+            searchResults.removeClass('d-none');
         }
-        
-        // Show with animation
-        searchResults.removeClass('d-none').addClass('animate__animated animate__fadeIn');
-        
-        // Scroll to search results
-        $('html, body').animate({
-            scrollTop: searchResults.offset().top - 100
-        }, 500);
     }
     
     function showMovieModal(movie) {
@@ -635,7 +687,21 @@ $(document).ready(function() {
         }, 500);
     }
     
-    function browseMovies() {
+    function browseMovies(page = 1) {
+        // Reset pagination if this is a new browse request
+        if (page === 1) {
+            currentPage = 1;
+            currentSearchTerm = '';
+            isSearchActive = false;
+            isGenreFilterActive = false;
+            currentGenre = '';
+        }
+        
+        // If loading more, increment the page
+        if (page > 1) {
+            currentPage = page;
+        }
+        
         // Show loading
         showLoading('Loading top movies...');
         updateProgress(20);
@@ -649,7 +715,7 @@ $(document).ready(function() {
         
         // Send AJAX request
         $.ajax({
-            url: '/movies',
+            url: `/movies?page=${currentPage}`,
             method: 'GET',
             success: function(data) {
                 updateProgress(100);
@@ -658,7 +724,7 @@ $(document).ready(function() {
                 hideLoading();
                 
                 // Display movies
-                displayBrowseMovies(data);
+                displayBrowseMovies(data, page > 1);
                 
                 // Reset section title
                 $('#browse-section h2').text('Browse Top Movies');
@@ -671,14 +737,26 @@ $(document).ready(function() {
         });
     }
     
-    function displayBrowseMovies(movies) {
+    function displayBrowseMovies(movies, append = false) {
         const container = $('#browse-container');
-        container.empty();
+        
+        // Clear container if not appending
+        if (!append) {
+            container.empty();
+        } else {
+            // Remove load more button if it exists
+            $('#load-more-browse-btn-container').remove();
+        }
         
         if (movies.length === 0) {
-            container.append(`<div class="col-12 text-center alert alert-info">
-                                <p>No movies found. Please try again later.</p>
-                            </div>`);
+            if (!append) {
+                container.append(`<div class="col-12 text-center alert alert-info">
+                                    <p>No movies found. Please try again later.</p>
+                                </div>`);
+            } else {
+                // If appending and no results, show "no more results" message
+                container.append('<div id="load-more-browse-btn-container" class="col-12 text-center mt-3 mb-5"><p>No more movies to load.</p></div>');
+            }
         } else {
             movies.forEach(function(movie, index) {
                 // Add animation with staggered delay
@@ -687,14 +765,33 @@ $(document).ready(function() {
                 card.css('animation-delay', delay + 'ms');
                 container.append(card);
             });
+            
+            // Add "Load More" button
+            const loadMoreBtn = $(`
+                <div id="load-more-browse-btn-container" class="col-12 text-center mt-3 mb-5">
+                    <button id="load-more-browse-btn" class="btn btn-outline-primary">
+                        <i class="fas fa-plus"></i> Load More Movies
+                    </button>
+                </div>
+            `);
+            
+            container.append(loadMoreBtn);
+            
+            // Add event listener to load more button
+            $('#load-more-browse-btn').on('click', function() {
+                loadMoreMovies();
+            });
         }
         
-        $('#browse-section').removeClass('d-none');
+        // Show the section with animation
+        $('#browse-section').removeClass('d-none').addClass('animate__animated animate__fadeIn');
         
-        // Scroll to browse section
-        $('html, body').animate({
-            scrollTop: $('#browse-section').offset().top - 100
-        }, 500);
+        // Scroll to browse section if not appending
+        if (!append) {
+            $('html, body').animate({
+                scrollTop: $('#browse-section').offset().top - 100
+            }, 500);
+        }
     }
     
     function createMovieCard(movie) {
@@ -812,5 +909,48 @@ $(document).ready(function() {
         }
         
         return genres.join(', ');
+    }
+    
+    // Add a function to load more movies
+    function loadMoreMovies() {
+        // Increment page number
+        currentPage++;
+        
+        // Determine which type of loading to perform
+        if (isSearchActive) {
+            // Load more search results
+            searchMovies(currentPage);
+        } else if (isGenreFilterActive) {
+            // Load more genre-filtered movies
+            loadMoreGenreMovies(currentGenre, currentPage);
+        } else {
+            // Load more browse movies
+            browseMovies(currentPage);
+        }
+    }
+    
+    // Function to load more movies by genre
+    function loadMoreGenreMovies(genre, page) {
+        // Show loading
+        showLoading(`Loading more ${genre} movies...`);
+        updateProgress(20);
+        
+        // Get movies by genre
+        $.ajax({
+            url: `/movies?genre=${genre}&page=${page}`,
+            method: 'GET',
+            success: function(data) {
+                updateProgress(100);
+                hideLoading();
+                
+                // Display filtered movies
+                displayBrowseMovies(data, true);
+            },
+            error: function(xhr, status, error) {
+                hideLoading();
+                console.error("Load more genre movies error:", error);
+                alert('An error occurred while loading more movies. Please try again later.');
+            }
+        });
     }
 }); 

@@ -815,4 +815,31 @@ footer {
     flex: 1;
     margin: 0 3px;
     white-space: nowrap;
+}
+
+/* Load More Button */
+#load-more-btn-container,
+#load-more-browse-btn-container {
+    margin-top: 2rem;
+    margin-bottom: 3rem;
+}
+
+#load-more-btn,
+#load-more-browse-btn {
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#load-more-btn:hover,
+#load-more-browse-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
+
+#load-more-btn i,
+#load-more-browse-btn i {
+    margin-right: 8px;
 } 
