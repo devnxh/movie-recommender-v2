@@ -1,0 +1,140 @@
+# CINEWATCH FIGMA DESIGN COMPONENTS
+
+## CORE UI COMPONENTS
+
+### 1. Navigation Bar
+- Logo (CineWatch logo)
+- Site name with styling
+- Navigation links (Home, Browse Movies)
+- Mobile responsive menu
+
+### 2. Hero Section
+- Large logo display
+- Headline ("CineWatch")
+- Slogan ("Your personal movie genie!")
+- Call-to-action buttons (Browse All Movies, Browse by Genre)
+- Background with gradient or image
+
+### 3. Search Section
+- Search input field
+- Search button
+- Search suggestions dropdown
+- Search results display
+
+### 4. Genre Filter
+- Genre icons with labels
+- Active/hover states for genre selection
+- Layout for multiple genres
+
+### 5. Movie Cards
+- Movie poster display
+- Title
+- Rating badge
+- Age rating badge
+- Hover effects
+- Quick action buttons
+
+### 6. Movie Detail Modal
+- Movie poster
+- Title
+- Rating and age rating
+- Genres list
+- Director(s) and cast information
+- Overview/description
+- Action buttons (Watch Trailer, Add to Watchlist, Get Similar Movies)
+
+### 7. Trailer Modal
+- Video player container
+- Close button
+- Title
+
+### 8. Watchlist Components
+- Floating watchlist button with counter
+- Watchlist section header
+- Clear watchlist button
+- Watchlist movie cards (could be a variant of the standard movie card)
+
+### 9. Section Headers
+- Styling for different section titles (Recommendations, Browse Movies, etc.)
+
+### 10. Loading Indicators
+- Spinner
+- Progress bar
+- Loading text
+
+### 11. Footer
+- Copyright information
+- Any additional links or information
+
+## PAGE LAYOUTS
+
+### 1. Home Page Layout
+- How all the above components fit together
+- Spacing and alignment
+- Responsive breakpoints (desktop, tablet, mobile)
+
+### 2. Results View Layout
+- How movie results are displayed (grid layout)
+- Pagination if needed
+
+## DESIGN SYSTEM ELEMENTS
+
+### 1. Color Palette
+- Primary and secondary colors
+- Accent colors
+- Background colors
+- Text colors
+
+### 2. Typography
+- Font families
+- Font sizes for different elements (headings, body text, buttons, etc.)
+- Font weights
+
+### 3. Buttons
+- Primary, secondary, and tertiary button styles
+- Hover and active states
+- Different sizes if needed
+
+### 4. Form Elements
+- Input fields
+- Dropdowns
+- Focus states
+
+### 5. Iconography
+- Custom icons or icon set to use throughout the application
+- Icon sizes and colors
+
+### 6. Spacing System
+- Consistent spacing values for margins and padding
+
+### 7. Animations and Transitions
+- Define how elements animate (optional, but adds polish)
+
+## RESPONSIVE VARIANTS
+
+Design each component for at least these breakpoints:
+- Desktop (1200px+)
+- Tablet (768px - 1199px)
+- Mobile (320px - 767px)
+
+## ADDITIONAL CONSIDERATIONS
+
+### 1. Dark/Light Mode (optional)
+- If you want to support both modes, design variants for each
+
+### 2. Error States
+- How errors are displayed (e.g., no search results, loading failures)
+
+### 3. Empty States
+- How empty sections look (e.g., empty watchlist)
+
+## IMPLEMENTATION NOTES
+
+When designing in Figma:
+- Create reusable components for elements that appear multiple times
+- Use consistent spacing and alignment
+- Consider accessibility (color contrast, text sizes)
+- Add notes or annotations for interactive elements
+- Organize your Figma file with clear page/frame names
+
+After completing your design, share the Figma link or export design specs and assets for implementation. 

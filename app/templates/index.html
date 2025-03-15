@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}CineWatch - Your personal movie genie!{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <!-- Hero Section -->
+        <div class="hero-section text-center mb-5 animate__animated animate__fadeIn">
+            <div class="hero-content">
+                <div class="hero-logo animate__animated animate__zoomIn animate__delay-1s">
+                    <img src="{{ url_for('static', filename='img/Cinewatch.png') }}" alt="CineWatch Logo" class="logo-img-large">
+                </div>
+                <h1 class="display-4 fw-bold animate__animated animate__fadeInUp animate__delay-2s">CineWatch</h1>
+                <p class="lead animate__animated animate__fadeInUp animate__delay-3s">Your personal movie genie!</p>
+                <div class="hero-buttons animate__animated animate__fadeInUp animate__delay-4s">
+                    <button class="btn btn-primary btn-lg me-2" id="browse-all-movies">
+                        <i class="fas fa-film"></i> Browse All Movies
+                    </button>
+                    <button class="btn btn-outline-light btn-lg" id="show-genres">
+                        <i class="fas fa-list"></i> Browse by Genre
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section mb-5 animate__animated animate__fadeIn animate__delay-1s">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Search for a Movie</h2>
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <div class="input-group mb-3 search-input-container">
+                                <input type="text" id="search-input" class="form-control form-control-lg" placeholder="Enter a movie title...">
+                                <button class="btn btn-primary btn-lg" type="button" id="search-button">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <div id="search-suggestions" class="search-suggestions d-none">
+                                    <!-- Search suggestions will be displayed here -->
+                                </div>
+                            </div>
+                            <div id="search-results" class="list-group mt-3 d-none">
+                                <!-- Search results will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Genre Filter Section -->
+        <div class="genre-filter-section mb-5 animate__animated animate__fadeIn animate__delay-2s">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Browse by Genre</h2>
+                    <div class="genre-icons-container">
+                        {% for genre in genres %}
+                        <div class="genre-icon" data-genre="{{ genre.name }}">
+                            <div class="icon-circle">
+                                <i class="fas {{ genre.icon }}"></i>
+                            </div>
+                            <span class="genre-name">{{ genre.name }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="text-center my-5 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2" id="loading-text">Processing your request...</p>
+            <div class="progress mt-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Watchlist Section -->
+        <div id="watchlist-section" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Your Watchlist</h2>
+                <button class="btn btn-outline-secondary btn-sm" id="clear-watchlist">
+                    <i class="fas fa-trash"></i> Clear Watchlist
+                </button>
+            </div>
+            <div class="row" id="watchlist-container">
+                <!-- Watchlist movies will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Default Movies Section -->
+        <div id="default-movies-section" class="d-none">
+            <h2 class="text-center mb-4">Blockbuster Movies You'll Love</h2>
+            <div class="row" id="default-movies-container">
+                <!-- Default movies will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Recommendations Section -->
+        <div id="recommendations-section" class="d-none">
+            <h2 class="text-center mb-4">Recommended Movies</h2>
+            <div class="row" id="recommendations-container">
+                <!-- Recommendations will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Browse Movies Section -->
+        <div id="browse-section" class="d-none">
+            <h2 class="text-center mb-4">Browse Top Movies</h2>
+            <div class="row" id="browse-container">
+                <!-- Top movies will be displayed here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Movie Modal -->
+<div class="modal fade" id="movieModal" tabindex="-1" aria-labelledby="movieModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="movieModalLabel">Movie Title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <img id="moviePoster" src="" class="img-fluid rounded" alt="Movie Poster">
+                    </div>
+                    <div class="col-md-8">
+                        <div class="d-flex justify-content-between mb-3">
+                            <div id="movieRating" class="badge bg-primary"><i class="fas fa-star"></i> 0.0</div>
+                            <div id="movieAgeRatingContainer">
+                                <span>Rating: </span>
+                                <span id="movieAgeRating" class="badge bg-secondary">PG</span>
+                            </div>
+                        </div>
+                        <p><strong>Genres:</strong> <span id="movieGenres">Genres</span></p>
+                        
+                        <div id="movieDirectorsContainer" class="mb-2">
+                            <p><strong>Director(s):</strong> <span id="movieDirectors">Directors</span></p>
+                        </div>
+                        
+                        <div id="movieCastContainer" class="mb-2">
+                            <p><strong>Cast:</strong> <span id="movieCast">Cast</span></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Overview:</h6>
+                            <p id="movieOverview">Overview text</p>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <button id="watchTrailerBtn" class="btn btn-primary">
+                                <i class="fab fa-youtube"></i> Watch Trailer
+                            </button>
+                            <button id="addToWatchlistBtn" class="btn btn-outline-primary">
+                                <i class="fas fa-bookmark"></i> Add to Watchlist
+                            </button>
+                        </div>
+                        <div class="mt-3">
+                            <button id="getRecommendationsBtn" class="btn btn-success w-100">
+                                <i class="fas fa-thumbs-up"></i> Get Similar Movies
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trailer Modal -->
+<div class="modal fade" id="trailerModal" tabindex="-1" aria-labelledby="trailerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trailerModalLabel">Movie Trailer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="ratio ratio-16x9">
+                    <iframe id="trailerIframe" src="" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Watchlist Button -->
+<button class="btn btn-primary floating-btn" id="show-watchlist">
+    <i class="fas fa-bookmark"></i>
+    <span class="badge bg-light text-dark" id="watchlist-count">0</span>
+</button>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // This will be handled by the main.js file
+</script>
+{% endblock %} 
