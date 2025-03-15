@@ -22,4 +22,14 @@ ENV/
 app/models/
 *.h5
 *.npz
-*.pkl 
+*.pkl
+
+# Additional exclusions
+*.csv
+!sample_data/sample_movies.csv
+*.json
+!vercel.json
+*.md
+!README.md
+Cinewatch.png
+CineWatch_Figma_Components.txt 
