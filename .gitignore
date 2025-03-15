@@ -35,7 +35,6 @@ ENV/
 Thumbs.db
 
 # Project specific
-TMDB_movie_dataset_v11.csv
 app/models/
 *.h5
 *.npz
