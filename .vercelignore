@@ -1,0 +1,25 @@
+# Large files
+TMDB_movie_dataset_v11.csv
+
+# Cache and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+ENV/
+
+# Development files
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Model files (can be regenerated)
+app/models/
+*.h5
+*.npz
+*.pkl 
