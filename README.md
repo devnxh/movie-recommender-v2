@@ -76,6 +76,7 @@ The system uses the TMDB movie dataset (v11) which includes information about mo
 - Implement advanced filtering options (by genre, year, etc.)
 - Add movie trailers and reviews
 
-## License
+##check out live demo
+https://movie-recommender-v2-htgt.onrender.com/
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+
