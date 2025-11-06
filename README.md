@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Live Demo](https://img.shields.io/badge/LIVE%20DEMO-Visit%20Site-blue?style=for-the-badge)](https://movie-recommender-v2.vercel.app/)
+[![Live Demo](https://img.shields.io/badge/LIVE%20DEMO-Visit%20Site-blue?style=for-the-badge)]([https://movie-recommender-v2.vercel.app/](https://movie-recommender-v2-htgt.onrender.com/))
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/devnxh/movie-recommender-v2)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
