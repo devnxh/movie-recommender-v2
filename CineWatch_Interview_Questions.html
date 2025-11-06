@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineWatch Interview Questions Guide</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        .question {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        .answer {
+            padding: 15px;
+            margin: 15px 0;
+            background-color: #fff;
+            border: 1px solid #e9ecef;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>CineWatch Movie Recommender - Interview Questions Guide</h1>
+
+    <h2>Backend Deep Dive Questions</h2>
+    <div class="question">
+        <strong>Q: Walk through the lifecycle of a movie recommendation request in your Flask application.</strong>
+        <div class="answer">
+            <p>The recommendation request flow:</p>
+            <pre><code># 1. Request handling
+@app.route('/recommend', methods=['POST'])
+def recommend():
+    movie_id = request.form['movie_id']
+    
+# 2. Data retrieval from cache/storage
+movie_features = tfidf_matrix[indices[movie_id]]
+
+# 3. Similarity computation
+sim_scores = cosine_similarity(movie_features, tfidf_matrix)
+
+# 4. Results processing
+movie_indices = sim_scores.argsort()[0][-10:][::-1]
+recommendations = movies_df.iloc[movie_indices]</code></pre>
+            <ul>
+                <li>Request validation and error handling</li>
+                <li>Cache checking for previous computations</li>
+                <li>Cosine similarity calculation</li>
+                <li>Response formatting and sending</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: Explain your Flask application structure and blueprint organization.</strong>
+        <div class="answer">
+            <p>Flask application organization:</p>
+            <ul>
+                <li>Route handlers for different endpoints</li>
+                <li>Separation of concerns (ML logic, data processing, API integration)</li>
+                <li>Error handling middleware</li>
+                <li>Session management</li>
+                <li>Configuration management for different environments</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: How do you handle concurrent requests in your Flask application?</strong>
+        <div class="answer">
+            <p>Concurrency handling:</p>
+            <ul>
+                <li>Gunicorn workers configuration</li>
+                <li>Thread-safe operations for data processing</li>
+                <li>Proper cache management</li>
+                <li>Connection pooling for external APIs</li>
+                <li>Resource locking for shared data access</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: Describe your data preprocessing pipeline in detail.</strong>
+        <div class="answer">
+            <pre><code>def preprocess_movie_data(movie):
+    # Clean text data
+    overview = clean_text(movie['overview'])
+    
+    # Extract and process features
+    genres = process_genres(movie['genres'])
+    keywords = process_keywords(movie['keywords'])
+    
+    # Combine features
+    combined_features = f"{overview} {genres} {keywords}"
+    
+    # TF-IDF vectorization
+    return tfidf_vectorizer.transform([combined_features])</code></pre>
+            <ul>
+                <li>Text cleaning and normalization</li>
+                <li>Feature extraction and combination</li>
+                <li>Vectorization process</li>
+                <li>Optimization techniques</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: How do you ensure thread safety in your recommendation engine?</strong>
+        <div class="answer">
+            <p>Thread safety measures:</p>
+            <ul>
+                <li>Using thread-safe data structures</li>
+                <li>Proper locking mechanisms</li>
+                <li>Immutable shared data</li>
+                <li>Cache synchronization</li>
+                <li>Resource pooling</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>System Architecture Questions</h2>
+    <div class="question">
+        <strong>Q: Explain the overall architecture of CineWatch and why you chose this particular stack.</strong>
+        <div class="answer">
+            <p>CineWatch uses a Flask backend with HTML/CSS/JavaScript frontend architecture because:</p>
+            <ul>
+                <li>Flask provides a lightweight, flexible framework suitable for ML-powered applications</li>
+                <li>Easy integration with Python data science libraries (pandas, scikit-learn)</li>
+                <li>Simple to deploy and scale</li>
+                <li>Frontend uses Bootstrap 5 for responsive design and jQuery for dynamic interactions</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: How does the recommendation system work in CineWatch?</strong>
+        <div class="answer">
+            <p>CineWatch implements content-based filtering using:</p>
+            <ul>
+                <li>TF-IDF vectorization of movie features (genres, keywords, overview)</li>
+                <li>Cosine similarity calculations for finding similar movies</li>
+                <li>Cached computations using HDF5 format for performance</li>
+                <li>Separate datasets for production and development environments</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Technical Deep Dive Questions</h2>
+    <div class="question">
+        <strong>Q: Explain the role of TF-IDF in your recommendation system.</strong>
+        <div class="answer">
+            <p>TF-IDF (Term Frequency-Inverse Document Frequency):</p>
+            <ul>
+                <li>Converts text data (movie descriptions, genres) into numerical vectors</li>
+                <li>Weights important terms higher while reducing impact of common words</li>
+                <li>Enables mathematical comparison between movies</li>
+                <li>Implementation using scikit-learn's TfidfVectorizer</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: How do you handle performance optimization in the application?</strong>
+        <div class="answer">
+            <p>Multiple optimization strategies:</p>
+            <ul>
+                <li>Sparse matrices for memory-efficient storage of TF-IDF data</li>
+                <li>HDF5 format for fast data loading</li>
+                <li>Caching of preprocessed data</li>
+                <li>Sample dataset for production environment</li>
+                <li>Progress bars for long operations using tqdm</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Database and Data Processing Questions</h2>
+    <div class="question">
+        <strong>Q: How do you handle data preprocessing in your application?</strong>
+        <div class="answer">
+            <pre><code>def load_data():
+    global movies_df, tfidf_matrix, indices
+    # Check if processed data exists
+    if os.path.exists(f'{models_dir}/tfidf_matrix.npz'):
+        # Load cached data
+    else:
+        # Process raw data</code></pre>
+            <p>Data preprocessing includes:</p>
+            <ul>
+                <li>Loading raw movie data from CSV</li>
+                <li>Feature extraction from text fields</li>
+                <li>TF-IDF vectorization</li>
+                <li>Caching processed results</li>
+                <li>Environment-specific dataset handling</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Deployment and DevOps Questions</h2>
+    <div class="question">
+        <strong>Q: How does your application handle different deployment environments?</strong>
+        <div class="answer">
+            <pre><code>IS_PRODUCTION = os.environ.get('VERCEL', False) or os.environ.get('RENDER', False)
+dataset_path = 'sample_data/sample_movies.csv' if IS_PRODUCTION else 'TMDB_movie_dataset_v11.csv'</code></pre>
+            <ul>
+                <li>Environment detection using environment variables</li>
+                <li>Different datasets for production and development</li>
+                <li>Configuration files for different platforms (Procfile, render.yaml)</li>
+                <li>Production-specific optimizations</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Coding Challenges</h2>
+    <div class="question">
+        <strong>Q: Write a function to calculate similarity between two movies.</strong>
+        <div class="answer">
+            <pre><code>def calculate_movie_similarity(movie_id1, movie_id2):
+    # Get movie vectors from TF-IDF matrix
+    vector1 = tfidf_matrix[indices[movie_id1]]
+    vector2 = tfidf_matrix[indices[movie_id2]]
+    
+    # Calculate cosine similarity
+    return cosine_similarity(vector1, vector2)[0][0]</code></pre>
+        </div>
+    </div>
+
+    <h2>Advanced Backend Topics</h2>
+    <div class="question">
+        <strong>Q: Explain your caching strategy in detail.</strong>
+        <div class="answer">
+            <p>Multi-layer caching approach:</p>
+            <pre><code># Function level caching
+@lru_cache(maxsize=1000)
+def get_movie_details(movie_id):
+    return fetch_movie_details(movie_id)
+
+# Data caching
+def cache_movie_vectors():
+    with h5py.File('movie_vectors.h5', 'w') as f:
+        f.create_dataset('tfidf_matrix', data=tfidf_matrix.toarray())
+        f.create_dataset('indices', data=indices)</code></pre>
+            <ul>
+                <li>Memory caching (LRU cache for frequent requests)</li>
+                <li>File-based caching (HDF5 for model data)</li>
+                <li>Cache invalidation strategies</li>
+                <li>Cache size management</li>
+                <li>Cache consistency handling</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: How do you handle large-scale data processing in your recommendation engine?</strong>
+        <div class="answer">
+            <p>Large-scale data handling:</p>
+            <pre><code>def process_large_dataset(dataset_path):
+    # Process in chunks
+    for chunk in pd.read_csv(dataset_path, chunksize=1000):
+        process_chunk(chunk)
+    
+    # Parallel processing
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(process_movie, movie_list)</code></pre>
+            <ul>
+                <li>Chunked data processing</li>
+                <li>Parallel processing with ThreadPoolExecutor</li>
+                <li>Memory-efficient operations</li>
+                <li>Progress tracking with tqdm</li>
+                <li>Error handling and recovery</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: Explain your API rate limiting and throttling implementation.</strong>
+        <div class="answer">
+            <pre><code>def rate_limit_decorator(func):
+    def wrapper(*args, **kwargs):
+        if exceeds_rate_limit():
+            raise RateLimitExceeded
+        return func(*args, **kwargs)
+    return wrapper
+
+@rate_limit_decorator
+def fetch_movie_details(movie_id):
+    # API call implementation</code></pre>
+            <ul>
+                <li>Request counting and tracking</li>
+                <li>Time window management</li>
+                <li>Redis for distributed rate limiting</li>
+                <li>Graceful degradation</li>
+                <li>User-specific limits</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: How do you handle database operations and transactions?</strong>
+        <div class="answer">
+            <pre><code>def update_movie_ratings(movie_id, rating):
+    try:
+        with db.session.begin():
+            movie = Movie.query.get(movie_id)
+            movie.update_rating(rating)
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        handle_error(e)</code></pre>
+            <ul>
+                <li>Transaction management</li>
+                <li>Connection pooling</li>
+                <li>Error handling and rollbacks</li>
+                <li>Data consistency</li>
+                <li>Query optimization</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: Describe your error handling and logging strategy.</strong>
+        <div class="answer">
+            <pre><code>def handle_api_error(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except APIError as e:
+            logger.error(f"API Error: {e}")
+            return fallback_response()
+        except Exception as e:
+            logger.exception("Unexpected error")
+            raise
+    return wrapper</code></pre>
+            <ul>
+                <li>Structured logging</li>
+                <li>Error categorization</li>
+                <li>Monitoring integration</li>
+                <li>Alert mechanisms</li>
+                <li>Debug information management</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: How do you optimize the recommendation algorithm's performance?</strong>
+        <div class="answer">
+            <pre><code>def optimize_similarity_calculation(movie_vector):
+    # Use sparse matrices
+    sparse_vector = scipy.sparse.csr_matrix(movie_vector)
+    
+    # Batch processing
+    similarities = cosine_similarity(sparse_vector, tfidf_matrix)
+    
+    # Top-k efficient selection
+    top_k = np.argpartition(similarities[0], -10)[-10:]
+    return sorted(top_k, key=lambda i: similarities[0][i], reverse=True)</code></pre>
+            <ul>
+                <li>Sparse matrix operations</li>
+                <li>Algorithmic optimizations</li>
+                <li>Batch processing</li>
+                <li>Memory management</li>
+                <li>CPU/GPU utilization</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="question">
+        <strong>Q: Explain your approach to testing backend components.</strong>
+        <div class="answer">
+            <pre><code>class TestRecommendationEngine(unittest.TestCase):
+    def setUp(self):
+        self.engine = RecommendationEngine()
+        self.test_data = load_test_data()
+    
+    def test_similarity_calculation(self):
+        result = self.engine.calculate_similarity(movie1, movie2)
+        self.assertAlmostEqual(result, expected_similarity, places=5)</code></pre>
+            <ul>
+                <li>Unit testing components</li>
+                <li>Integration testing</li>
+                <li>Load testing</li>
+                <li>Mock external services</li>
+                <li>Test data management</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Best Practices Questions</h2>
+    <div class="question">
+        <strong>Q: How do you ensure code quality in your project?</strong>
+        <div class="answer">
+            <p>Quality assurance measures:</p>
+            <ul>
+                <li>Clear project structure</li>
+                <li>Consistent coding style</li>
+                <li>Documentation</li>
+                <li>Error handling</li>
+                <li>Version control best practices</li>
+                <li>Code review process</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
