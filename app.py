@@ -159,7 +159,7 @@ def get_recommendations(title, n=10):
         enhanced_result = []
         for movie in result:
             # Fix poster path if it's just a relative path
-            if movie['poster_path'] and not movie['poster_path'].startswith(('http://', 'https://')):
+            if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
                 movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
             
             # Try to get additional details from TMDB
@@ -226,26 +226,32 @@ def get_movie_trailer(title):
             }
     except Exception as e:
         print(f"Error getting trailer for '{title}': {e}")
-        return None
+        # Return a fallback URL in case of error
+        search_query = f"{title} official trailer"
+        return {
+            "title": f"{title} - Official Trailer",
+            "video_id": None,
+            "search_url": f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
+        }
 
 def extract_genres_from_movies():
-    """Extract unique genres from the movies dataset"""
+    """Extract all unique genres from the movies dataframe"""
     global movies_df
     
     if movies_df is None:
         return []
     
-    # Get all genres
-    all_genres = []
+    # Get all genres from the dataframe
+    all_genres = set()
     for genres_str in movies_df['genres'].dropna():
-        # Extract genres using regex
-        genres = re.findall(r'([A-Za-z\s]+)(?:,|$)', genres_str)
-        all_genres.extend([g.strip() for g in genres])
-    
-    # Get unique genres and sort them
-    unique_genres = sorted(list(set(all_genres)))
-    
-    # Create genre objects with icons
+        # Split by common separators and clean up
+        genres = re.split(r'[,|]', str(genres_str))
+        for genre in genres:
+            cleaned = genre.strip()
+            if cleaned:
+                all_genres.add(cleaned)
+
+    # Icons used by the genre filter in index.html (genre.name / genre.icon)
     genre_icons = {
         'Action': 'fa-explosion',
         'Adventure': 'fa-compass',
@@ -267,20 +273,15 @@ def extract_genres_from_movies():
         'War': 'fa-gun',
         'Western': 'fa-hat-cowboy'
     }
-    
-    genres_with_icons = []
-    for genre in unique_genres:
-        icon = genre_icons.get(genre, 'fa-film')  # Default icon if not found
-        genres_with_icons.append({
-            'name': genre,
-            'icon': icon
-        })
-    
-    return genres_with_icons
+
+    return [
+        {'name': genre, 'icon': genre_icons.get(genre, 'fa-film')}
+        for genre in sorted(all_genres)
+    ]
 
 @app.route('/')
 def index():
-    """Render the home page"""
+    """Render the main page"""
     # Get all unique genres for the filter
     genres = extract_genres_from_movies()
     return render_template('index.html', genres=genres)
@@ -316,7 +317,7 @@ def search():
     enhanced_results = []
     for movie in results:
         # Fix poster path if it's just a relative path
-        if movie['poster_path'] and not movie['poster_path'].startswith(('http://', 'https://')):
+        if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
             movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
         
         # Try to get additional details from TMDB
@@ -406,7 +407,7 @@ def movies():
         enhanced_results = []
         for movie in results:
             # Fix poster path if it's just a relative path
-            if movie['poster_path'] and not movie['poster_path'].startswith(('http://', 'https://')):
+            if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
                 movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
             
             # Try to get additional details from TMDB
@@ -445,7 +446,7 @@ def default_movies():
         enhanced_results = []
         for movie in results:
             # Fix poster path if it's just a relative path
-            if movie['poster_path'] and not movie['poster_path'].startswith(('http://', 'https://')):
+            if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
                 movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
             
             # Try to get additional details from TMDB
@@ -616,4 +617,4 @@ load_data()
 # For local development
 if __name__ == '__main__':
     # Run the app
-    app.run(debug=True) 
+    app.run(debug=True)
