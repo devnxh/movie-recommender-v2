@@ -75,12 +75,26 @@ Discover your next favorite movie with CineWatch - an intelligent movie recommen
    pip install -r requirements.txt
    ```
 
-3. Run the application:
+3. (Optional) Set your TMDB API key to show cast, directors and age ratings. Get a free key at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api). The app works without it.
+   ```bash
+   # macOS / Linux
+   export TMDB_API_KEY=your_key_here
+   ```
+   ```powershell
+   # Windows PowerShell
+   $env:TMDB_API_KEY = "your_key_here"
+   ```
+
+4. Run the application:
    ```bash
    python app.py
    ```
 
-4. Open [http://localhost:5000](http://localhost:5000) in your browser
+5. Open [http://localhost:5000](http://localhost:5000) in your browser
+
+### Deploying on Render
+
+Add `TMDB_API_KEY` under **Environment** in the Render dashboard. Never commit the key to the repository. On Render the app loads the 1,000-movie sample in `sample_data/` instead of the full dataset, to stay within the free plan's memory.
 
 ## 💡 How It Works
 

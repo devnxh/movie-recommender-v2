@@ -24,8 +24,11 @@ indices = None
 # YouTube API key - in a real app, this would be stored securely
 YOUTUBE_API_KEY = "YOUR_YOUTUBE_API_KEY"  # Replace with your actual API key if available
 
-# TMDB API key
-TMDB_API_KEY = "f3ca028bc7f9a25f5613839a01f600df"
+# TMDB API key - read from the environment, never commit it.
+# Without it the app still works, just without extra TMDB details (cast, directors, age rating).
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "").strip()
+if not TMDB_API_KEY:
+    print("TMDB_API_KEY is not set; movie details from TMDB are disabled.")
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
 # Check if we're in production (Vercel) or development
@@ -558,18 +561,25 @@ def genres():
 
 def get_movie_details_from_tmdb(movie_title):
     """Fetch detailed movie information from TMDB API"""
+    if not TMDB_API_KEY:
+        return None
+
     try:
         # Search for the movie
-        search_url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={movie_title}"
-        response = requests.get(search_url)
+        search_url = "https://api.themoviedb.org/3/search/movie"
+        response = requests.get(search_url, params={"api_key": TMDB_API_KEY, "query": movie_title}, timeout=10)
         data = response.json()
         
         if 'results' in data and len(data['results']) > 0:
             movie_id = data['results'][0]['id']
             
             # Get detailed movie information
-            details_url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&append_to_response=credits,release_dates"
-            details_response = requests.get(details_url)
+            details_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
+            details_response = requests.get(
+                details_url,
+                params={"api_key": TMDB_API_KEY, "append_to_response": "credits,release_dates"},
+                timeout=10,
+            )
             details_data = details_response.json()
             
             # Extract cast (top 5)

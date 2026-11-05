@@ -1,12 +1,14 @@
 services:
   - type: web
-    name: cinewatch-movie-recommender
-    env: python
+    name: movie-recommender-v2
+    runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
+      # scipy 1.15.2 needs Python >= 3.10; every pinned package has 3.12 wheels
       - key: PYTHON_VERSION
-        value: 3.9.0
-      - key: RENDER
-        value: true
-    plan: free 
+        value: 3.12.8
+      # Secret: set the value in the Render dashboard, never in this file
+      - key: TMDB_API_KEY
+        sync: false
