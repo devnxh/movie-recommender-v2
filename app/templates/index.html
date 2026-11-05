@@ -3,168 +3,162 @@
 {% block title %}CineWatch - Your personal movie genie!{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10">
-        <!-- Hero Section -->
-        <div class="hero-section text-center mb-5 animate__animated animate__fadeIn">
-            <div class="hero-content">
-                <div class="hero-logo animate__animated animate__zoomIn animate__delay-1s">
-                    <img src="{{ url_for('static', filename='img/Cinewatch.png') }}" alt="CineWatch Logo" class="logo-img-large">
-                </div>
-                <h1 class="display-4 fw-bold animate__animated animate__fadeInUp animate__delay-2s">CineWatch</h1>
-                <p class="lead animate__animated animate__fadeInUp animate__delay-3s">Your personal movie genie!</p>
-                <div class="hero-buttons animate__animated animate__fadeInUp animate__delay-4s">
-                    <button class="btn btn-primary btn-lg me-2" id="browse-all-movies">
-                        <i class="fas fa-film"></i> Browse All Movies
-                    </button>
-                    <button class="btn btn-outline-light btn-lg" id="show-genres">
-                        <i class="fas fa-list"></i> Browse by Genre
-                    </button>
-                </div>
-            </div>
-        </div>
+<!-- Hero + Search -->
+<section class="hero-section animate__animated animate__fadeIn">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="hero-content">
+        <span class="eyebrow"><i class="fas fa-wand-magic-sparkles"></i> Your personal movie genie</span>
+        <h1 class="hero-title">Find your next <span class="accent">favorite movie</span></h1>
+        <p class="hero-sub">Search any title and get hand-picked recommendations from thousands of films.</p>
 
-        <!-- Search Section -->
-        <div class="search-section mb-5 animate__animated animate__fadeIn animate__delay-1s">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h2 class="card-title text-center mb-4">Search for a Movie</h2>
-                    <div class="row justify-content-center">
-                        <div class="col-md-8">
-                            <div class="input-group mb-3 search-input-container">
-                                <input type="text" id="search-input" class="form-control form-control-lg" placeholder="Enter a movie title...">
-                                <button class="btn btn-primary btn-lg" type="button" id="search-button">
-                                    <i class="fas fa-search"></i> Search
-                                </button>
-                                <div id="search-suggestions" class="search-suggestions d-none">
-                                    <!-- Search suggestions will be displayed here -->
-                                </div>
-                            </div>
-                            <div id="search-results" class="list-group mt-3 d-none">
-                                <!-- Search results will be displayed here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Genre Filter Section -->
-        <div class="genre-filter-section mb-5 animate__animated animate__fadeIn animate__delay-2s">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h2 class="card-title text-center mb-4">Browse by Genre</h2>
-                    <div class="genre-icons-container">
-                        {% for genre in genres %}
-                        <div class="genre-icon" data-genre="{{ genre.name }}">
-                            <div class="icon-circle">
-                                <i class="fas {{ genre.icon }}"></i>
-                            </div>
-                            <span class="genre-name">{{ genre.name }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Loading Indicator -->
-        <div id="loading" class="text-center my-5 d-none">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2" id="loading-text">Processing your request...</p>
-            <div class="progress mt-3">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-            </div>
-        </div>
-
-        <!-- Watchlist Section -->
-        <div id="watchlist-section" class="d-none">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Your Watchlist</h2>
-                <button class="btn btn-outline-secondary btn-sm" id="clear-watchlist">
-                    <i class="fas fa-trash"></i> Clear Watchlist
+        <div class="search-section">
+            <div class="search-input-container">
+                <i class="fas fa-magnifying-glass search-icon" aria-hidden="true"></i>
+                <input type="text" id="search-input" class="form-control" placeholder="Search a movie title…" autocomplete="off" aria-label="Search a movie title">
+                <button class="btn btn-primary" type="button" id="search-button">
+                    Search
                 </button>
-            </div>
-            <div class="row" id="watchlist-container">
-                <!-- Watchlist movies will be displayed here -->
-            </div>
-        </div>
-
-        <!-- Default Movies Section -->
-        <div id="default-movies-section" class="d-none">
-            <h2 class="text-center mb-4">Blockbuster Movies You'll Love</h2>
-            <div class="row" id="default-movies-container">
-                <!-- Default movies will be displayed here -->
+                <div id="search-suggestions" class="search-suggestions d-none">
+                    <!-- Search suggestions will be displayed here -->
+                </div>
             </div>
         </div>
 
-        <!-- Recommendations Section -->
-        <div id="recommendations-section" class="d-none">
-            <h2 class="text-center mb-4">Recommended Movies</h2>
-            <div class="row" id="recommendations-container">
-                <!-- Recommendations will be displayed here -->
-            </div>
+        <div class="hero-buttons">
+            <button class="btn btn-primary btn-lg" id="browse-all-movies">
+                <i class="fas fa-film"></i> Browse All Movies
+            </button>
+            <button class="btn btn-glass btn-lg" id="show-genres">
+                <i class="fas fa-shapes"></i> Browse by Genre
+            </button>
         </div>
+    </div>
+</section>
 
-        <!-- Browse Movies Section -->
-        <div id="browse-section" class="d-none">
-            <h2 class="text-center mb-4">Browse Top Movies</h2>
-            <div class="row" id="browse-container">
-                <!-- Top movies will be displayed here -->
+<!-- Search Results -->
+<section id="search-results" class="results-section d-none">
+    <!-- Search results will be displayed here -->
+</section>
+
+<!-- Genre Filter Section -->
+<section class="genre-filter-section">
+    <div class="card">
+        <div class="card-body">
+            <div class="section-head">
+                <h2 class="section-title">Browse by Genre</h2>
+                <p class="section-sub">Pick a genre to filter the catalogue. Click again to clear.</p>
+            </div>
+            <div class="genre-icons-container">
+                {% for genre in genres %}
+                <button type="button" class="genre-icon" data-genre="{{ genre.name }}">
+                    <span class="icon-circle"><i class="fas {{ genre.icon }}"></i></span>
+                    <span class="genre-name">{{ genre.name }}</span>
+                </button>
+                {% endfor %}
             </div>
         </div>
     </div>
+</section>
+
+<!-- Loading Indicator -->
+<div id="loading" class="loading-panel d-none">
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-3 mb-3" id="loading-text">Processing your request...</p>
+    <div class="progress">
+        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+    </div>
 </div>
+
+<!-- Watchlist Section -->
+<section id="watchlist-section" class="results-section d-none">
+    <div class="section-head d-flex justify-content-between align-items-center">
+        <h2 class="section-title mb-0">Your Watchlist</h2>
+        <button class="btn btn-glass btn-sm" id="clear-watchlist">
+            <i class="fas fa-trash"></i> Clear Watchlist
+        </button>
+    </div>
+    <div class="row" id="watchlist-container">
+        <!-- Watchlist movies will be displayed here -->
+    </div>
+</section>
+
+<!-- Default Movies Section -->
+<section id="default-movies-section" class="results-section d-none">
+    <div class="section-head">
+        <h2 class="section-title">Blockbuster Movies You'll Love</h2>
+    </div>
+    <div class="row" id="default-movies-container">
+        <!-- Default movies will be displayed here -->
+    </div>
+</section>
+
+<!-- Recommendations Section -->
+<section id="recommendations-section" class="results-section d-none">
+    <div class="section-head">
+        <h2 class="section-title">Recommended Movies</h2>
+    </div>
+    <div class="row" id="recommendations-container">
+        <!-- Recommendations will be displayed here -->
+    </div>
+</section>
+
+<!-- Browse Movies Section -->
+<section id="browse-section" class="results-section d-none">
+    <h2 class="section-title">Browse Top Movies</h2>
+    <div class="row" id="browse-container">
+        <!-- Top movies will be displayed here -->
+    </div>
+</section>
 
 <!-- Movie Modal -->
 <div class="modal fade" id="movieModal" tabindex="-1" aria-labelledby="movieModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="movieModalLabel">Movie Title</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="row">
+                <div class="row g-4">
                     <div class="col-md-4">
-                        <img id="moviePoster" src="" class="img-fluid rounded" alt="Movie Poster">
+                        <img id="moviePoster" src="" class="img-fluid modal-poster" alt="Movie Poster">
                     </div>
                     <div class="col-md-8">
-                        <div class="d-flex justify-content-between mb-3">
-                            <div id="movieRating" class="badge bg-primary"><i class="fas fa-star"></i> 0.0</div>
-                            <div id="movieAgeRatingContainer">
-                                <span>Rating: </span>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <div id="movieRating" class="badge rating-pill"><i class="fas fa-star"></i> 0.0</div>
+                            <div id="movieAgeRatingContainer" class="meta-muted">
+                                <span>Rated</span>
                                 <span id="movieAgeRating" class="badge bg-secondary">PG</span>
                             </div>
                         </div>
-                        <p><strong>Genres:</strong> <span id="movieGenres">Genres</span></p>
-                        
-                        <div id="movieDirectorsContainer" class="mb-2">
-                            <p><strong>Director(s):</strong> <span id="movieDirectors">Directors</span></p>
+                        <p class="meta-row"><span class="meta-label">Genres</span> <span id="movieGenres">Genres</span></p>
+
+                        <div id="movieDirectorsContainer">
+                            <p class="meta-row"><span class="meta-label">Director(s)</span> <span id="movieDirectors">Directors</span></p>
                         </div>
-                        
-                        <div id="movieCastContainer" class="mb-2">
-                            <p><strong>Cast:</strong> <span id="movieCast">Cast</span></p>
+
+                        <div id="movieCastContainer">
+                            <p class="meta-row"><span class="meta-label">Cast</span> <span id="movieCast">Cast</span></p>
                         </div>
-                        
-                        <div class="mb-3">
-                            <h6>Overview:</h6>
-                            <p id="movieOverview">Overview text</p>
+
+                        <div class="mb-4">
+                            <h6 class="meta-label mb-2">Overview</h6>
+                            <p id="movieOverview" class="overview">Overview text</p>
                         </div>
-                        
-                        <div class="d-flex justify-content-between">
-                            <button id="watchTrailerBtn" class="btn btn-primary">
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <button id="watchTrailerBtn" class="btn btn-primary flex-grow-1">
                                 <i class="fab fa-youtube"></i> Watch Trailer
                             </button>
-                            <button id="addToWatchlistBtn" class="btn btn-outline-primary">
+                            <button id="addToWatchlistBtn" class="btn btn-glass flex-grow-1">
                                 <i class="fas fa-bookmark"></i> Add to Watchlist
                             </button>
                         </div>
-                        <div class="mt-3">
-                            <button id="getRecommendationsBtn" class="btn btn-success w-100">
-                                <i class="fas fa-thumbs-up"></i> Get Similar Movies
+                        <div class="mt-2">
+                            <button id="getRecommendationsBtn" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-wand-magic-sparkles"></i> Get Similar Movies
                             </button>
                         </div>
                     </div>
@@ -176,15 +170,15 @@
 
 <!-- Trailer Modal -->
 <div class="modal fade" id="trailerModal" tabindex="-1" aria-labelledby="trailerModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="trailerModalLabel">Movie Trailer</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-0">
                 <div class="ratio ratio-16x9">
-                    <iframe id="trailerIframe" src="" allowfullscreen></iframe>
+                    <iframe id="trailerIframe" src="" allowfullscreen title="Movie trailer"></iframe>
                 </div>
             </div>
         </div>
@@ -192,14 +186,8 @@
 </div>
 
 <!-- Floating Watchlist Button -->
-<button class="btn btn-primary floating-btn" id="show-watchlist">
+<button class="btn floating-btn" id="show-watchlist" aria-label="Show watchlist">
     <i class="fas fa-bookmark"></i>
-    <span class="badge bg-light text-dark" id="watchlist-count">0</span>
+    <span class="badge" id="watchlist-count">0</span>
 </button>
 {% endblock %}
-
-{% block scripts %}
-<script>
-    // This will be handled by the main.js file
-</script>
-{% endblock %} 

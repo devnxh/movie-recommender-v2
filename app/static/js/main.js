@@ -445,7 +445,8 @@ $(document).ready(function() {
     
     function searchMovies(page = 1) {
         const searchTerm = $('#search-input').val().trim();
-        
+        $('#search-suggestions').addClass('d-none');
+
         if (searchTerm === '') {
             return;
         }
@@ -797,7 +798,7 @@ $(document).ready(function() {
     function createMovieCard(movie) {
         // Create a movie card element with enhanced animations
         const card = $(`
-            <div class="col-md-4 col-lg-3 mb-4">
+            <div class="col-6 col-md-4 col-lg-3 mb-4">
                 <div class="card movie-card h-100 shadow">
                     <div class="card-img-container">
                         <img src="${movie.poster_path || 'https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster'}" class="card-img-top" alt="${movie.title}">
