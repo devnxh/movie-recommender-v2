@@ -7,6 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 from tqdm import tqdm
 import time
+import threading
 import h5py
 from scipy.sparse import save_npz, load_npz
 import requests
@@ -21,6 +22,19 @@ movies_df = None
 tfidf_matrix = None
 indices = None
 
+# Per-movie features used to rank recommendations (built by prepare_ranking_features)
+quality_scores = None   # 0..1, vote-weighted rating blended with popularity
+genre_sets = None       # frozenset of lowercase genres per row
+vote_counts = None
+titles_lower = None     # lowercase titles for fast search suggestions
+hero_poster_urls = []   # small posters of the most-voted films, for the hero film strips
+
+# Recommendation ranking: text similarity finds candidates, then genre overlap and quality re-rank them
+REC_CANDIDATE_POOL = 400
+REC_MIN_VOTES = 100       # ignore films almost nobody has rated (falls back if too few remain)
+REC_WEIGHTS = {'similarity': 0.50, 'genre': 0.30, 'quality': 0.20}
+QUALITY_PRIOR_VOTES = 500  # votes needed before a film's own rating outweighs the average
+
 # YouTube API key - in a real app, this would be stored securely
 YOUTUBE_API_KEY = "YOUR_YOUTUBE_API_KEY"  # Replace with your actual API key if available
 
@@ -33,6 +47,60 @@ TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
 # Check if we're in production (Vercel) or development
 IS_PRODUCTION = os.environ.get('VERCEL', False) or os.environ.get('RENDER', False)
+
+def adult_mask(df):
+    """True for rows TMDB flags as adult (pornographic) films.
+
+    These are removed everywhere (search, suggestions, browse, recommendations).
+    Mainstream R-rated films are not affected; only TMDB's `adult` flag is used.
+    """
+    if 'adult' not in df.columns:
+        return pd.Series(False, index=df.index)
+    return df['adult'].astype(str).str.strip().str.lower().eq('true')
+
+def build_title_index(df):
+    """Map each title to its row position. For duplicate titles the first (most popular) row wins.
+
+    Requires a 0..n-1 index so labels match tfidf_matrix row positions.
+    """
+    title_index = pd.Series(df.index, index=df['title'])
+    return title_index[~title_index.index.duplicated(keep='first')]
+
+def prepare_ranking_features():
+    """Precompute the per-movie numbers used to rank recommendations and suggestions."""
+    global quality_scores, genre_sets, vote_counts, titles_lower
+
+    votes = movies_df['vote_count'].fillna(0).to_numpy(dtype=float)
+    ratings = movies_df['vote_average'].fillna(0).to_numpy(dtype=float)
+    rated = votes > 0
+    mean_rating = ratings[rated].mean() if rated.any() else 0.0
+
+    # IMDb-style weighted rating: few votes pull a film toward the average
+    weighted_rating = (votes / (votes + QUALITY_PRIOR_VOTES)) * ratings \
+        + (QUALITY_PRIOR_VOTES / (votes + QUALITY_PRIOR_VOTES)) * mean_rating
+    popularity = np.log1p(votes) / max(np.log1p(votes.max()), 1e-9)
+
+    quality_scores = 0.5 * (weighted_rating / 10.0) + 0.5 * popularity
+    vote_counts = votes
+    genre_sets = [
+        frozenset(g.strip().lower() for g in str(genres).split(',') if g.strip())
+        for genres in movies_df['genres'].fillna('')
+    ]
+    titles_lower = movies_df['title'].fillna('').str.lower()
+
+def prepare_hero_posters(limit=24):
+    """Poster URLs (small TMDB size) of the most-voted films, shown on the hero film strips."""
+    global hero_poster_urls
+
+    with_posters = movies_df[movies_df['poster_path'].notna()]
+    top = with_posters.sort_values('vote_count', ascending=False).head(limit)
+    urls = []
+    for path in top['poster_path'].astype(str):
+        if path.startswith(('http://', 'https://')):
+            urls.append(path)
+        elif path.startswith('/'):
+            urls.append(f"https://image.tmdb.org/t/p/w185{path}")
+    hero_poster_urls = urls
 
 # Load data at startup
 def load_data():
@@ -52,10 +120,28 @@ def load_data():
             
             # Load the movies dataframe
             movies_df = pd.read_pickle(f'{models_dir}/movies_df.pkl')
-            
-            # Create a Series with movie titles as indices and movie indices as values
-            indices = pd.Series(movies_df.index, index=movies_df['title']).drop_duplicates()
-            
+
+            if tfidf_matrix.shape[0] != len(movies_df):
+                raise ValueError("preprocessed movies and TF-IDF matrix have different row counts")
+
+            # Row labels must equal matrix row positions for recommendations to pick the right movie
+            movies_df = movies_df.reset_index(drop=True)
+
+            # Older preprocessed files were built before adult films were filtered out
+            adult = adult_mask(movies_df)
+            if adult.any():
+                print(f"Removing {int(adult.sum())} adult titles from preprocessed data...")
+                keep = np.flatnonzero(~adult.to_numpy())
+                tfidf_matrix = tfidf_matrix[keep]
+                movies_df = movies_df.iloc[keep].reset_index(drop=True)
+                try:
+                    save_npz(f'{models_dir}/tfidf_matrix.npz', tfidf_matrix)
+                    movies_df.to_pickle(f'{models_dir}/movies_df.pkl')
+                except Exception as save_error:
+                    print(f"Could not save filtered data (will filter again next start): {save_error}")
+
+            indices = build_title_index(movies_df)
+
             print("Data loaded successfully!")
         except Exception as e:
             print(f"Error loading preprocessed data: {e}")
@@ -65,6 +151,9 @@ def load_data():
         print("Preprocessed data not found. Processing data for the first time...")
         # Process the data
         process_data(dataset_path, models_dir)
+
+    prepare_ranking_features()
+    prepare_hero_posters()
 
 def process_data(dataset_path, models_dir):
     """Process the raw data and save it for future use"""
@@ -81,6 +170,10 @@ def process_data(dataset_path, models_dir):
     # Clean the data
     print("Cleaning data...")
     movies_df = movies_df.dropna(subset=['genres', 'keywords', 'overview'])
+    adult = adult_mask(movies_df)
+    print(f"Removing {int(adult.sum())} adult titles...")
+    # reset_index so row labels match TF-IDF matrix row positions
+    movies_df = movies_df[~adult].reset_index(drop=True)
     pbar.update(1)
     
     # Create a new feature by combining relevant columns
@@ -94,8 +187,8 @@ def process_data(dataset_path, models_dir):
     tfidf_matrix = tfidf.fit_transform(movies_df['combined_features'])
     pbar.update(1)
     
-    # Create a Series with movie titles as indices and movie indices as values
-    indices = pd.Series(movies_df.index, index=movies_df['title']).drop_duplicates()
+    # Map titles to row positions
+    indices = build_title_index(movies_df)
     pbar.update(1)
     
     # Save the processed data
@@ -113,6 +206,42 @@ def process_data(dataset_path, models_dir):
     pbar.close()
     print("Data processing completed!")
 
+def rank_similar_movies(idx, n):
+    """Return row positions of the n best recommendations for the movie at row idx.
+
+    Plain TF-IDF similarity over 200k+ films surfaces obscure titles that merely share a
+    word (e.g. "dream" for Inception). So: take the most text-similar candidates among films
+    people have actually rated, then re-rank by similarity, genre overlap and quality.
+    """
+    # Similarity of this movie to every movie (one sparse row vs the matrix: cheap)
+    sim = cosine_similarity(tfidf_matrix[idx], tfidf_matrix).ravel()
+
+    # Never recommend the movie itself (or another copy with the same title)
+    sim[idx] = -1.0
+    sim[(titles_lower == titles_lower.iat[idx]).to_numpy()] = -1.0
+
+    rated_enough = vote_counts >= REC_MIN_VOTES
+    if rated_enough.sum() > n * 3:
+        sim = np.where(rated_enough, sim, -1.0)
+
+    pool = min(REC_CANDIDATE_POOL, len(sim) - 1)
+    candidates = np.argpartition(-sim, pool)[:pool]
+    candidates = candidates[sim[candidates] > 0]
+    if len(candidates) == 0:
+        return []
+
+    source_genres = genre_sets[idx]
+    genre_overlap = np.array([
+        len(source_genres & genre_sets[c]) / max(1, len(source_genres | genre_sets[c]))
+        for c in candidates
+    ])
+    similarity = sim[candidates] / sim[candidates].max()
+
+    score = (REC_WEIGHTS['similarity'] * similarity
+             + REC_WEIGHTS['genre'] * genre_overlap
+             + REC_WEIGHTS['quality'] * quality_scores[candidates])
+    return candidates[np.argsort(-score)[:n]]
+
 def get_recommendations(title, n=10):
     """Get movie recommendations based on similarity"""
     global tfidf_matrix, movies_df, indices
@@ -128,7 +257,8 @@ def get_recommendations(title, n=10):
         # Try to find a close match if exact title not found
         close_matches = movies_df[movies_df['title'].str.contains(title, case=False, regex=False)]
         if len(close_matches) > 0:
-            # Use the first close match
+            # Use the most-voted close match
+            close_matches = close_matches.sort_values('vote_count', ascending=False)
             match_title = close_matches.iloc[0]['title']
             print(f"Using '{match_title}' instead of '{title}'")
             idx = indices[match_title]
@@ -141,16 +271,8 @@ def get_recommendations(title, n=10):
         if not isinstance(idx, (int, np.integer)):
             idx = int(idx)
             
-        # Compute similarity for the specific movie
-        # This is more memory efficient than computing the entire similarity matrix
-        movie_vector = tfidf_matrix[idx].reshape(1, -1)
-        
-        # Calculate similarity scores for this movie with all others
-        sim_scores = cosine_similarity(movie_vector, tfidf_matrix).flatten()
-        
-        # Get the indices of the top n similar movies (excluding the movie itself)
-        sim_indices = sim_scores.argsort()[::-1][1:n+1]
-        
+        sim_indices = rank_similar_movies(idx, n)
+
         # Check if we have valid indices
         if len(sim_indices) == 0:
             return []
@@ -287,7 +409,10 @@ def index():
     """Render the main page"""
     # Get all unique genres for the filter
     genres = extract_genres_from_movies()
-    return render_template('index.html', genres=genres)
+    # Two film strips for the hero, each from a different half of the top posters
+    half = len(hero_poster_urls) // 2
+    film_strips = [s for s in (hero_poster_urls[:half], hero_poster_urls[half:]) if s]
+    return render_template('index.html', genres=genres, film_strips=film_strips)
 
 @app.route('/search', methods=['POST'])
 def search():
@@ -356,11 +481,15 @@ def search_suggestions():
     if not query or len(query) < 2:
         return jsonify([])
     
-    # Filter movies that contain the search term
-    results = movies_df[movies_df['title'].str.contains(query, case=False)]
-    
-    # Return the top 5 suggestions
-    suggestions = results.head(5)['title'].tolist()
+    # Titles containing the search term: ones that start with it first, then the most-voted
+    q = query.strip().lower()
+    contains = titles_lower.str.contains(q, regex=False).to_numpy()
+    matches = np.flatnonzero(contains)
+    if len(matches) == 0:
+        return jsonify([])
+    starts = titles_lower.iloc[matches].str.startswith(q).to_numpy()
+    order = np.lexsort((-vote_counts[matches], ~starts))
+    suggestions = movies_df['title'].iloc[matches[order]].drop_duplicates().head(5).tolist()
     return jsonify(suggestions)
 
 @app.route('/recommend', methods=['POST'])
@@ -559,6 +688,38 @@ def genres():
     genres = extract_genres_from_movies()
     return jsonify(genres)
 
+@app.route('/health')
+def health():
+    """Lightweight endpoint for uptime checks and the keep-alive ping."""
+    return jsonify({"status": "ok", "movies": 0 if movies_df is None else len(movies_df)})
+
+def start_keep_alive():
+    """Keep a Render free instance awake by pinging its own public URL.
+
+    Render stops free web services after 15 minutes without inbound traffic.
+    RENDER_EXTERNAL_URL is set by Render automatically, so this only runs there.
+    Set KEEP_ALIVE=0 to turn it off, or KEEP_ALIVE_INTERVAL (seconds) to change the interval.
+    """
+    base_url = os.environ.get('RENDER_EXTERNAL_URL', '').rstrip('/')
+    if not base_url or os.environ.get('KEEP_ALIVE', '1') == '0':
+        return
+
+    try:
+        interval = max(60, int(os.environ.get('KEEP_ALIVE_INTERVAL', '600')))  # default 10 minutes
+    except ValueError:
+        interval = 600
+
+    def ping_forever():
+        while True:
+            time.sleep(interval)
+            try:
+                requests.get(f"{base_url}/health", timeout=30)
+            except Exception as e:
+                print(f"Keep-alive ping failed: {e}")
+
+    threading.Thread(target=ping_forever, name='keep-alive', daemon=True).start()
+    print(f"Keep-alive: pinging {base_url}/health every {interval}s")
+
 def get_movie_details_from_tmdb(movie_title):
     """Fetch detailed movie information from TMDB API"""
     if not TMDB_API_KEY:
@@ -623,6 +784,7 @@ def get_movie_details_from_tmdb(movie_title):
 
 # Load data at startup for faster first request
 load_data()
+start_keep_alive()
 
 # For local development
 if __name__ == '__main__':

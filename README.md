@@ -96,6 +96,17 @@ Discover your next favorite movie with CineWatch - an intelligent movie recommen
 
 Add `TMDB_API_KEY` under **Environment** in the Render dashboard. Never commit the key to the repository. On Render the app loads the 1,000-movie sample in `sample_data/` instead of the full dataset, to stay within the free plan's memory.
 
+**Staying awake:** Render's free plan stops a service after 15 minutes without traffic. On Render the app pings its own `/health` endpoint every 10 minutes to stay up (running all month uses about 744 of the free plan's 750 monthly hours). Optional environment variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `KEEP_ALIVE` | `1` | Set to `0` to turn the self-ping off |
+| `KEEP_ALIVE_INTERVAL` | `600` | Seconds between pings (minimum 60) |
+
+### Content filtering
+
+Films that TMDB flags as adult (pornographic) are removed from the dataset at load time, so they never appear in search, suggestions, browsing or recommendations.
+
 ## 💡 How It Works
 
 ### Content-Based Recommendation Engine
