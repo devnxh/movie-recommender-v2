@@ -523,7 +523,7 @@ p {
 }
 
 .movie-card:hover {
-    transform: translateY(-4px) scale(1.02);
+    transform: translateY(-4px);
     border-color: rgba(245, 158, 11, 0.4);
     box-shadow: var(--cw-amber-glow), 0 20px 40px -20px rgba(0, 0, 0, 0.8);
     z-index: 5;
@@ -727,26 +727,69 @@ p {
 
 /* ===== Loading ===== */
 .loading-panel {
-    max-width: 420px;
-    margin: 3rem auto;
-    text-align: center;
+    margin-bottom: 3rem;
 }
 
-.spinner-border {
-    width: 3rem;
-    height: 3rem;
-    border-width: 0.25rem;
-    color: var(--cw-amber);
+.loading-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
 }
 
 #loading-text {
+    flex: 0 0 auto;
     color: var(--cw-text-muted);
+    font-size: 0.9rem;
+}
+
+.loading-head .progress {
+    flex: 1;
+    max-width: 240px;
 }
 
 .progress {
-    height: 4px;
+    height: 2px;
     border-radius: 999px;
     background: var(--cw-surface-2);
+}
+
+/* Skeleton cards: same footprint as .movie-card, with a slow light sweep */
+.skeleton-card {
+    border: 1px solid var(--cw-border);
+    border-radius: var(--cw-radius-md);
+    background: var(--cw-surface-1);
+    overflow: hidden;
+    padding-bottom: 1rem;
+}
+
+.skeleton-poster,
+.skeleton-line {
+    background: linear-gradient(100deg,
+        var(--cw-surface-2) 30%, #262b38 50%, var(--cw-surface-2) 70%);
+    background-size: 300% 100%;
+    animation: cw-skeleton 1.6s ease-in-out infinite;
+}
+
+.skeleton-poster {
+    aspect-ratio: 2 / 3;
+}
+
+.skeleton-line {
+    height: 0.75rem;
+    margin: 0.9rem 1rem 0;
+    border-radius: 999px;
+    width: 70%;
+}
+
+.skeleton-line.short {
+    width: 45%;
+    margin-top: 0.55rem;
+}
+
+@keyframes cw-skeleton {
+    from { background-position: 100% 0; }
+    to   { background-position: 0 0; }
 }
 
 .progress-bar {
@@ -912,6 +955,8 @@ p {
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;
+        /* stop infinite loops (grain, film strips, skeletons) instead of making them flicker */
+        animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
@@ -970,4 +1015,339 @@ p {
     .site-name {
         font-size: 1.25rem;
     }
+}
+
+/* =====================================================================
+   Motion — restrained, cinematic. Timing is ease-out heavy (things settle,
+   they don't bounce). All of it collapses under prefers-reduced-motion.
+   ===================================================================== */
+
+:root {
+    --cw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --cw-ease-shutter: cubic-bezier(0.77, 0, 0.18, 1);
+}
+
+/* Film grain: a faint analog texture over the whole page */
+body::after {
+    content: "";
+    position: fixed;
+    inset: -120px;
+    z-index: 3000;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.045;
+    animation: cw-grain 1.4s steps(6) infinite;
+}
+
+@keyframes cw-grain {
+    0%   { transform: translate(0, 0); }
+    17%  { transform: translate(-42px, 26px); }
+    33%  { transform: translate(30px, -38px); }
+    50%  { transform: translate(-18px, 48px); }
+    67%  { transform: translate(52px, 12px); }
+    83%  { transform: translate(-36px, -24px); }
+    100% { transform: translate(0, 0); }
+}
+
+/* Nav firms up after scrolling */
+.site-nav {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.site-nav.is-scrolled {
+    background: rgba(13, 14, 18, 0.92) !important;
+    border-bottom-color: var(--cw-border);
+}
+
+/* Hero: headline lines rise out of a mask, then the rest settles in */
+.hero-title .line {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.12em;
+    margin-bottom: -0.12em;
+}
+
+.hero-title .line > span {
+    display: inline-block;
+    transform: translateY(110%);
+    animation: cw-line-up 1s var(--cw-ease-out) forwards;
+    animation-delay: calc(120ms + var(--i, 0) * 110ms);
+}
+
+@keyframes cw-line-up {
+    to { transform: translateY(0); }
+}
+
+.hero-content > .eyebrow,
+.hero-content > .hero-sub,
+.hero-content > .search-section,
+.hero-content > .hero-buttons {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: cw-settle 0.8s var(--cw-ease-out) forwards;
+}
+
+.hero-content > .eyebrow       { animation-delay: 0ms; }
+.hero-content > .hero-sub      { animation-delay: 420ms; }
+.hero-content > .search-section { animation-delay: 520ms; }
+.hero-content > .hero-buttons  { animation-delay: 620ms; }
+
+@keyframes cw-settle {
+    to { opacity: 1; transform: none; }
+}
+
+/* The animation makes these their own layers; keep search suggestions above the buttons */
+.hero-content > .search-section {
+    position: relative;
+    z-index: 5;
+}
+
+/* Hero light drifts very slowly, like a projector beam */
+.hero-glow {
+    animation: cw-drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes cw-drift {
+    from { transform: translate3d(-3%, 0, 0); }
+    to   { transform: translate3d(3%, 2%, 0); }
+}
+
+/* Posters sharpen in once loaded instead of popping */
+.card-img-top {
+    opacity: 0;
+    filter: blur(12px);
+    transition: opacity 0.6s ease, filter 0.8s var(--cw-ease-out), transform 0.5s var(--cw-ease);
+}
+
+.card-img-top.is-loaded {
+    opacity: 1;
+    filter: none;
+}
+
+/* Card reveal (classes added by motion.js): a shutter wipe over the poster */
+.movie-card.reveal {
+    opacity: 0;
+    transform: translateY(18px);
+}
+
+.movie-card.reveal .card-img-container {
+    clip-path: inset(0 0 100% 0);
+}
+
+.movie-card.reveal.in-view {
+    opacity: 1;
+    transform: none;
+    transition:
+        opacity 0.5s ease var(--reveal-delay, 0ms),
+        transform 0.8s var(--cw-ease-out) var(--reveal-delay, 0ms);
+}
+
+.movie-card.reveal.in-view .card-img-container {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 0.9s var(--cw-ease-shutter) var(--reveal-delay, 0ms);
+}
+
+/* Modals rise and settle instead of sliding from the top */
+.modal.fade .modal-dialog {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+    transition: transform 0.45s var(--cw-ease-out), opacity 0.3s ease;
+}
+
+.modal.show .modal-dialog {
+    opacity: 1;
+    transform: none;
+}
+
+/* Tactile press feedback */
+.btn:active {
+    transform: translateY(1px) scale(0.985);
+}
+
+.genre-icon:active {
+    transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body::after,
+    .hero-glow {
+        animation: none;
+    }
+}
+
+/* ===== Touch devices: no sticky hover states ===== */
+button,
+a,
+.genre-icon,
+.movie-card {
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: none) {
+    /* The footer already has Details / Watchlist, so the hover overlay would only hide the poster */
+    .overlay-content {
+        display: none;
+    }
+
+    .movie-card:hover {
+        transform: none;
+        border-color: var(--cw-border);
+        box-shadow: none;
+    }
+
+    .movie-card:hover .card-img-top {
+        transform: none;
+    }
+
+    .movie-card:hover .card-img-top.is-loaded {
+        filter: none;
+    }
+
+    .movie-card:hover .card-title {
+        color: var(--cw-text);
+    }
+
+    .genre-icon:hover {
+        transform: none;
+    }
+}
+
+/* ===== Phones: genre chips scroll sideways instead of stacking ~8 rows deep ===== */
+@media (max-width: 575.98px) {
+    .genre-icons-container {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        margin: 0 -1.25rem;
+        padding: 0.15rem 1.25rem 0.35rem;
+        scrollbar-width: none;
+        -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
+        mask-image: linear-gradient(90deg, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
+    }
+
+    .genre-icons-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .genre-icon {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
+
+    .loading-head .progress {
+        max-width: none;
+    }
+}
+
+/* =====================================================================
+   Motion graphic: film strips of real posters drifting behind the hero.
+   Sprocket holes are drawn on the moving track so they travel with the film;
+   their 23px period divides the frame pitch (92px, 69px on phones), so the
+   loop seam is invisible.
+   ===================================================================== */
+.hero-reel {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* Darken the middle so the headline and search stay crisp; strips read at the edges */
+.hero-reel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(58% 62% at 50% 46%, rgba(13, 14, 18, 0.94) 0%, rgba(13, 14, 18, 0.72) 55%, rgba(13, 14, 18, 0.25) 100%),
+        linear-gradient(180deg, rgba(13, 14, 18, 0) 70%, var(--cw-canvas) 100%);
+}
+
+.film-strip {
+    --pw: 80px;       /* frame width; height is 1.5x */
+    --gap: 12px;
+    position: absolute;
+    left: -15%;
+    width: 130%;
+    opacity: 0.55;
+}
+
+.film-strip-1 {
+    top: 4%;
+    transform: rotate(-4deg);
+}
+
+.film-strip-2 {
+    bottom: 6%;
+    transform: rotate(3deg);
+}
+
+.film-track {
+    display: flex;
+    gap: var(--gap);
+    width: max-content;
+    padding: 16px 0;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 11px, transparent 11px) 0 5px / 23px 6px repeat-x,
+        linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 11px, transparent 11px) 0 calc(100% - 5px) / 23px 6px repeat-x,
+        #07080b;
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.7);
+    animation: cw-reel 90s linear infinite;
+    will-change: transform;
+}
+
+.film-strip-2 .film-track {
+    animation-duration: 110s;
+    animation-direction: reverse;
+}
+
+/* Shift by exactly one copy of the strip (n frames), then repeat */
+@keyframes cw-reel {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(calc(var(--n) * (var(--pw) + var(--gap)) * -1), 0, 0); }
+}
+
+.film-frame {
+    flex: 0 0 var(--pw);
+    width: var(--pw);
+    height: calc(var(--pw) * 1.5);
+    border-radius: 3px;
+    overflow: hidden;
+    background: #111319;
+}
+
+.film-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.75) brightness(0.8);
+}
+
+/* Glow and content sit above the reel */
+.hero-glow {
+    z-index: 1;
+}
+
+@media (max-width: 575.98px) {
+    .film-strip {
+        --pw: 60px;
+        --gap: 9px;
+    }
+
+    .film-strip-1 { top: 2%; }
+    .film-strip-2 { bottom: 3%; }
+}
+
+/* Small spinning film reel next to the loading text */
+.reel-icon {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    color: var(--cw-amber);
+    animation: cw-spin 2.4s linear infinite;
+}
+
+@keyframes cw-spin {
+    to { transform: rotate(360deg); }
 }

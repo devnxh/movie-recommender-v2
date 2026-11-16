@@ -4,11 +4,28 @@
 
 {% block content %}
 <!-- Hero + Search -->
-<section class="hero-section animate__animated animate__fadeIn">
+<section class="hero-section">
+    {% if film_strips %}
+    <!-- Motion graphic: film strips of real posters drifting behind the hero -->
+    <div class="hero-reel" aria-hidden="true">
+        {% for strip in film_strips %}
+        <div class="film-strip film-strip-{{ loop.index }}" style="--n: {{ strip|length }}">
+            <div class="film-track">
+                {% for copy in range(3) %}{% for url in strip %}
+                <span class="film-frame"><img src="{{ url }}" alt="" decoding="async" fetchpriority="low"></span>
+                {% endfor %}{% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     <div class="hero-glow" aria-hidden="true"></div>
     <div class="hero-content">
-        <span class="eyebrow"><i class="fas fa-wand-magic-sparkles"></i> Your personal movie genie</span>
-        <h1 class="hero-title">Find your next <span class="accent">favorite movie</span></h1>
+        <span class="eyebrow"><i class="fas fa-clapperboard"></i> Your personal movie genie</span>
+        <h1 class="hero-title">
+            <span class="line"><span style="--i:0">Find your next</span></span>
+            <span class="line"><span class="accent" style="--i:1">favorite movie</span></span>
+        </h1>
         <p class="hero-sub">Search any title and get hand-picked recommendations from thousands of films.</p>
 
         <div class="search-section">
@@ -61,13 +78,33 @@
 </section>
 
 <!-- Loading Indicator -->
-<div id="loading" class="loading-panel d-none">
-    <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
+<div id="loading" class="loading-panel d-none" role="status" aria-live="polite">
+    <div class="loading-head">
+        <svg class="reel-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+            <circle cx="12" cy="6.2" r="2.2" fill="currentColor"/>
+            <circle cx="17.52" cy="10.21" r="2.2" fill="currentColor"/>
+            <circle cx="15.41" cy="16.69" r="2.2" fill="currentColor"/>
+            <circle cx="8.59" cy="16.69" r="2.2" fill="currentColor"/>
+            <circle cx="6.48" cy="10.21" r="2.2" fill="currentColor"/>
+        </svg>
+        <span id="loading-text">Processing your request...</span>
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+        </div>
     </div>
-    <p class="mt-3 mb-3" id="loading-text">Processing your request...</p>
-    <div class="progress">
-        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+    <!-- Skeleton posters shaped like the real cards, so content doesn't jump in -->
+    <div class="row" aria-hidden="true">
+        {% for i in range(8) %}
+        <div class="col-6 col-md-4 col-lg-3 mb-4">
+            <div class="skeleton-card">
+                <div class="skeleton-poster"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line short"></div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
@@ -158,7 +195,7 @@
                         </div>
                         <div class="mt-2">
                             <button id="getRecommendationsBtn" class="btn btn-outline-primary w-100">
-                                <i class="fas fa-wand-magic-sparkles"></i> Get Similar Movies
+                                <i class="fas fa-layer-group"></i> Get Similar Movies
                             </button>
                         </div>
                     </div>

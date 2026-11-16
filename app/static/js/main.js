@@ -185,8 +185,8 @@ $(document).ready(function() {
         container.empty();
         
         watchlist.forEach(function(movie, index) {
-            const card = createMovieCard(movie).addClass('animate__animated animate__fadeIn');
-            
+            const card = createMovieCard(movie);
+
             // Add watchlist badge
             card.find('.card').prepend('<div class="watchlist-badge"><i class="fas fa-bookmark"></i></div>');
             
@@ -425,22 +425,17 @@ $(document).ready(function() {
                             </div>`);
         } else {
             movies.forEach(function(movie, index) {
-                // Create movie card with animation
-                const card = createMovieCard(movie).addClass('animate__animated animate__fadeIn');
-                
+                // Card reveal animation is handled by motion.js
+                const card = createMovieCard(movie);
+
                 // Add blockbuster badge
                 card.find('.card').prepend('<div class="blockbuster-badge"><i class="fas fa-star"></i> Blockbuster</div>');
-                
-                // Add with staggered delay
-                const delay = index * 100;
-                card.css('animation-delay', delay + 'ms');
-                
+
                 container.append(card);
             });
         }
-        
-        // Show the section with animation
-        $('#default-movies-section').removeClass('d-none').addClass('animate__animated animate__fadeIn');
+
+        $('#default-movies-section').removeClass('d-none');
     }
     
     function searchMovies(page = 1) {
@@ -562,7 +557,7 @@ $(document).ready(function() {
         $('#movieOverview').text(movie.overview || 'No overview available.');
         
         // Add age rating
-        if (movie.age_rating) {
+        if (movie.age_rating && movie.age_rating !== 'Not Rated') {
             $('#movieAgeRating').html(`<span class="badge ${getAgeRatingClass(movie.age_rating)}">${movie.age_rating}</span>`);
             $('#movieAgeRatingContainer').removeClass('d-none');
         } else {
@@ -671,12 +666,8 @@ $(document).ready(function() {
                                 <p>Please try another movie or browse our top movies.</p>
                             </div>`);
         } else {
-            recommendations.forEach(function(movie, index) {
-                // Add animation with staggered delay
-                const delay = index * 100;
-                const card = createMovieCard(movie).addClass('animate__animated animate__fadeInUp');
-                card.css('animation-delay', delay + 'ms');
-                container.append(card);
+            recommendations.forEach(function(movie) {
+                container.append(createMovieCard(movie));
             });
         }
         
@@ -759,12 +750,8 @@ $(document).ready(function() {
                 container.append('<div id="load-more-browse-btn-container" class="col-12 text-center mt-3 mb-5"><p>No more movies to load.</p></div>');
             }
         } else {
-            movies.forEach(function(movie, index) {
-                // Add animation with staggered delay
-                const delay = index * 50;
-                const card = createMovieCard(movie).addClass('animate__animated animate__fadeInUp');
-                card.css('animation-delay', delay + 'ms');
-                container.append(card);
+            movies.forEach(function(movie) {
+                container.append(createMovieCard(movie));
             });
             
             // Add "Load More" button
@@ -784,8 +771,7 @@ $(document).ready(function() {
             });
         }
         
-        // Show the section with animation
-        $('#browse-section').removeClass('d-none').addClass('animate__animated animate__fadeIn');
+        $('#browse-section').removeClass('d-none');
         
         // Scroll to browse section if not appending
         if (!append) {
@@ -801,12 +787,12 @@ $(document).ready(function() {
             <div class="col-6 col-md-4 col-lg-3 mb-4">
                 <div class="card movie-card h-100 shadow">
                     <div class="card-img-container">
-                        <img src="${movie.poster_path || 'https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster'}" class="card-img-top" alt="${movie.title}">
+                        <img src="${movie.poster_path || 'https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster'}" class="card-img-top" alt="${movie.title}" loading="lazy" decoding="async" onload="this.classList.add('is-loaded')" onerror="this.classList.add('is-loaded')">
                         <div class="card-img-overlay">
                             <div class="rating">
                                 <i class="fas fa-star"></i> ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}
                             </div>
-                            ${movie.age_rating ? `<div class="age-rating ${getAgeRatingClass(movie.age_rating)}">${movie.age_rating}</div>` : ''}
+                            ${movie.age_rating && movie.age_rating !== 'Not Rated' ? `<div class="age-rating ${getAgeRatingClass(movie.age_rating)}">${movie.age_rating}</div>` : ''}
                             <div class="overlay-content">
                                 <button class="btn btn-light btn-sm view-details-overlay mb-2" data-movie='${JSON.stringify(movie).replace(/'/g, "&#39;")}'>
                                     <i class="fas fa-info-circle"></i> View Details
@@ -851,15 +837,13 @@ $(document).ready(function() {
     
     function showLoading(message) {
         loadingText.text(message || 'Loading...');
-        $('#loading').removeClass('d-none').addClass('animate__animated animate__fadeIn');
+        $('#loading').removeClass('d-none');
         updateProgress(0);
     }
-    
+
     function hideLoading() {
-        $('#loading').addClass('animate__animated animate__fadeOut');
-        setTimeout(function() {
-            $('#loading').addClass('d-none').removeClass('animate__animated animate__fadeIn animate__fadeOut');
-        }, 500);
+        // Hide immediately so the skeleton doesn't push the real cards down as they arrive
+        $('#loading').addClass('d-none');
     }
     
     function updateProgress(value) {
