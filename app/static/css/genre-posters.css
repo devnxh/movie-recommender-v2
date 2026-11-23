@@ -1,0 +1,273 @@
+.motion-gallery {
+    --poster-ink: #161613;
+    margin-block: clamp(1.75rem, 4vw, 3.6rem);
+}
+
+.gallery-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.gallery-heading h2 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.3vw, 2rem);
+    font-weight: 650;
+    line-height: 1.1;
+    letter-spacing: -.055em;
+}
+
+.motion-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .45rem .7rem;
+    border: 1px solid currentColor;
+    border-radius: 2rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: .75rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.motion-switch[hidden] { display: none; }
+
+.motion-switch-icon {
+    display: inline-grid;
+    width: .75rem;
+    height: .75rem;
+    place-items: center;
+}
+
+.motion-switch-icon:empty::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-block: .29rem solid transparent;
+    border-left: .45rem solid currentColor;
+}
+
+.motion-running .motion-switch-icon:empty::before {
+    width: .5rem;
+    height: .6rem;
+    border: 0;
+    border-inline: 2px solid currentColor;
+}
+
+.poster-wall {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(.65rem, 1.5vw, 1.4rem);
+}
+
+.genre-poster {
+    position: relative;
+    isolation: isolate;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1.08;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1rem;
+    color: var(--poster-ink);
+    background: var(--paper);
+    font-family: var(--cw-font-display, sans-serif);
+    text-align: left;
+    cursor: pointer;
+}
+
+.genre-poster:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px #aaa;
+}
+
+.action-poster { --paper: #ff593c; }
+.orbit-poster { --paper: #c9b9fa; }
+.comedy-poster { --paper: #d8f54c; }
+
+.action-sculpture,
+.orbit-art,
+.comedy-art {
+    position: absolute;
+    inset: 0 0 16%;
+    width: 100%;
+    height: 84%;
+    pointer-events: none;
+}
+
+.action-sculpture {
+    object-fit: contain;
+}
+
+.orbit-art {
+    display: grid;
+    place-items: center;
+}
+
+.orbit-globe {
+    position: relative;
+    width: 54%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    background: var(--paper);
+    transform: rotate(-23deg);
+}
+
+.orbit-globe .meridian,
+.orbit-globe .parallel {
+    position: absolute;
+    border: 1.7px solid currentColor;
+    border-radius: 50%;
+}
+
+.orbit-globe .meridian {
+    inset: -1px;
+    transform: rotateY(var(--angle));
+    animation: globe-turn 8s linear infinite;
+    animation-play-state: paused;
+}
+
+.orbit-globe .parallel {
+    left: 50%;
+    top: var(--position);
+    width: var(--width);
+    height: 13%;
+    transform: translate(-50%, -50%);
+}
+
+.orbit-ring {
+    position: absolute;
+    width: 76%;
+    height: 28%;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    transform: rotate(-24deg);
+}
+
+.comedy-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5%;
+}
+
+/* The stagger and jump timing adapt Utkarsh Verma's MIT-licensed
+   SVG Spinners "3-dots-bounce". See ../media/svg-spinners-LICENSE.txt. */
+.comedy-dot {
+    position: relative;
+    display: block;
+    width: 23%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    color: var(--paper);
+    background: var(--poster-ink);
+    animation: comedy-bounce 1.75s infinite;
+    animation-play-state: paused;
+}
+
+.comedy-dot:nth-child(2) { animation-delay: -.35s; }
+.comedy-dot:nth-child(3) { animation-delay: -.7s; }
+
+.face-eyes {
+    position: absolute;
+    top: 29%;
+    left: 28%;
+    width: 44%;
+    height: 15%;
+}
+
+.face-eyes::before,
+.face-eyes::after {
+    position: absolute;
+    top: 0;
+    width: 20%;
+    height: 100%;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+}
+
+.face-eyes::before { left: 0; }
+.face-eyes::after { right: 0; }
+
+.face-smile {
+    position: absolute;
+    top: 51%;
+    left: 25%;
+    width: 50%;
+    height: 21%;
+    border: solid currentColor;
+    border-width: 0 2.5px 3px;
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+}
+
+.poster-caption {
+    position: absolute;
+    inset: auto 6% 5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0;
+    color: var(--poster-ink);
+    font-size: clamp(1.55rem, 2.9vw, 2.9rem);
+    font-weight: 700;
+    letter-spacing: -.065em;
+    line-height: 1.05;
+}
+
+.poster-arrow {
+    color: var(--poster-ink);
+    font-size: clamp(1.1rem, 2.1vw, 1.9rem);
+    line-height: 1;
+}
+
+.motion-running .meridian,
+.motion-running .comedy-dot {
+    animation-play-state: running;
+}
+
+@keyframes globe-turn {
+    from { transform: rotateY(var(--angle)); }
+    to { transform: rotateY(calc(var(--angle) + 180deg)); }
+}
+
+@keyframes comedy-bounce {
+    0%, 57.14%, 100% {
+        transform: translateY(0);
+        animation-timing-function: cubic-bezier(.33, .66, .66, 1);
+    }
+    28.57% {
+        transform: translateY(-39%);
+        animation-timing-function: cubic-bezier(.33, 0, .66, .33);
+    }
+}
+
+@media (min-width: 601px) and (max-width: 800px) {
+    .genre-poster { border-radius: .7rem; }
+    .poster-caption { font-size: 1.45rem; }
+}
+
+@media (max-width: 600px) {
+    .poster-wall { grid-template-columns: 1fr; }
+    .genre-poster { aspect-ratio: 1.7; }
+    .orbit-globe { width: 38%; }
+    .orbit-ring { width: 61%; }
+    .comedy-dot { width: 17%; }
+    .poster-caption { font-size: 1.85rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .motion-gallery:not(.motion-running) .meridian,
+    .motion-gallery:not(.motion-running) .comedy-dot {
+        animation-play-state: paused;
+    }
+}
