@@ -1,6 +1,6 @@
 .motion-gallery {
     --poster-ink: #161613;
-    margin-block: clamp(1.75rem, 4vw, 3.6rem);
+    min-width: 0;
 }
 
 .gallery-heading {
@@ -8,15 +8,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: .6rem;
 }
 
 .gallery-heading h2 {
     margin: 0;
-    font-size: clamp(1.35rem, 2.3vw, 2rem);
+    font-size: .85rem;
     font-weight: 650;
     line-height: 1.1;
-    letter-spacing: -.055em;
+    letter-spacing: 0;
 }
 
 .motion-switch {
@@ -51,7 +51,7 @@
     border-left: .45rem solid currentColor;
 }
 
-.motion-running .motion-switch-icon:empty::before {
+.motion-switch:not(.shows-play) .motion-switch-icon:empty::before {
     width: .5rem;
     height: .6rem;
     border: 0;
@@ -60,8 +60,10 @@
 
 .poster-wall {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: clamp(.65rem, 1.5vw, 1.4rem);
+    grid-template-columns: 1.27fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    aspect-ratio: 1.58;
+    gap: clamp(5px, .6vw, 9px);
 }
 
 .genre-poster {
@@ -69,7 +71,9 @@
     isolation: isolate;
     display: block;
     width: 100%;
-    aspect-ratio: 1.08;
+    min-width: 0;
+    min-height: 0;
+    container-type: inline-size;
     padding: 0;
     overflow: hidden;
     border: 0;
@@ -87,7 +91,7 @@
     box-shadow: 0 0 0 6px #aaa;
 }
 
-.action-poster { --paper: #ff593c; }
+.action-poster { --paper: #ff593c; grid-row: span 2; }
 .orbit-poster { --paper: #c9b9fa; }
 .comedy-poster { --paper: #d8f54c; }
 
@@ -102,7 +106,7 @@
 }
 
 .action-sculpture {
-    object-fit: contain;
+    object-fit: cover;
 }
 
 .orbit-art {
@@ -112,7 +116,7 @@
 
 .orbit-globe {
     position: relative;
-    width: 54%;
+    height: 80%;
     aspect-ratio: 1;
     overflow: hidden;
     border: 2px solid currentColor;
@@ -145,8 +149,8 @@
 
 .orbit-ring {
     position: absolute;
-    width: 76%;
-    height: 28%;
+    width: 70%;
+    height: 22%;
     border: 2px solid currentColor;
     border-top-color: transparent;
     border-radius: 50%;
@@ -158,6 +162,7 @@
     align-items: center;
     justify-content: center;
     gap: 2.5%;
+    transform: rotate(-8deg);
 }
 
 /* The stagger and jump timing adapt Utkarsh Verma's MIT-licensed
@@ -218,16 +223,10 @@
     justify-content: space-between;
     margin: 0;
     color: var(--poster-ink);
-    font-size: clamp(1.55rem, 2.9vw, 2.9rem);
+    font-size: clamp(1.2rem, 13cqw, 2.6rem);
     font-weight: 700;
     letter-spacing: -.065em;
     line-height: 1.05;
-}
-
-.poster-arrow {
-    color: var(--poster-ink);
-    font-size: clamp(1.1rem, 2.1vw, 1.9rem);
-    line-height: 1;
 }
 
 .motion-running .meridian,
@@ -251,23 +250,54 @@
     }
 }
 
-@media (min-width: 601px) and (max-width: 800px) {
-    .genre-poster { border-radius: .7rem; }
-    .poster-caption { font-size: 1.45rem; }
+.action-poster .poster-caption {
+    font-size: clamp(2.2rem, 25cqw, 6rem);
+    font-weight: 800;
+    letter-spacing: -.085em;
+    inset: auto 5.5% 3%;
 }
 
-@media (max-width: 600px) {
-    .poster-wall { grid-template-columns: 1fr; }
-    .genre-poster { aspect-ratio: 1.7; }
-    .orbit-globe { width: 38%; }
-    .orbit-ring { width: 61%; }
-    .comedy-dot { width: 17%; }
-    .poster-caption { font-size: 1.85rem; }
+.poster-arrow {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.75em;
+    height: 1.75em;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font: 500 clamp(.75rem, 5.2cqw, 1.15rem)/1 system-ui, sans-serif;
+    transition: background-color .2s, color .2s;
+}
+.poster-arrow::before, .poster-arrow::after {
+    content: "";
+    position: absolute;
+}
+.poster-arrow::before {
+    width: 48%;
+    height: 1.5px;
+    background: currentColor;
+    transform: rotate(-45deg);
+}
+.poster-arrow::after {
+    top: 30%;
+    right: 30%;
+    width: 30%;
+    height: 30%;
+    border-top: 1.5px solid currentColor;
+    border-right: 1.5px solid currentColor;
+}
+.genre-poster:hover .poster-arrow, .genre-poster:focus-visible .poster-arrow {
+    color: var(--paper);
+    background-color: var(--poster-ink);
+    border-color: var(--poster-ink);
 }
 
+@media (max-width: 500px) {
+    .genre-poster { border-radius: .6rem; }
+}
+
+/* A deliberate Play click opts back into the gallery's motion. */
 @media (prefers-reduced-motion: reduce) {
-    .motion-gallery:not(.motion-running) .meridian,
-    .motion-gallery:not(.motion-running) .comedy-dot {
-        animation-play-state: paused;
-    }
+    .motion-running .meridian { animation-duration: 8s !important; animation-iteration-count: infinite !important; }
+    .motion-running .comedy-dot { animation-duration: 1.75s !important; animation-iteration-count: infinite !important; }
 }

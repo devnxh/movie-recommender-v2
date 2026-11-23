@@ -27,7 +27,6 @@ quality_scores = None   # 0..1, vote-weighted rating blended with popularity
 genre_sets = None       # frozenset of lowercase genres per row
 vote_counts = None
 titles_lower = None     # lowercase titles for fast search suggestions
-hero_poster_urls = []   # small posters of the most-voted films, for the hero film strips
 
 # Recommendation ranking: text similarity finds candidates, then genre overlap and quality re-rank them
 REC_CANDIDATE_POOL = 400
@@ -88,20 +87,6 @@ def prepare_ranking_features():
     ]
     titles_lower = movies_df['title'].fillna('').str.lower()
 
-def prepare_hero_posters(limit=24):
-    """Poster URLs (small TMDB size) of the most-voted films, shown on the hero film strips."""
-    global hero_poster_urls
-
-    with_posters = movies_df[movies_df['poster_path'].notna()]
-    top = with_posters.sort_values('vote_count', ascending=False).head(limit)
-    urls = []
-    for path in top['poster_path'].astype(str):
-        if path.startswith(('http://', 'https://')):
-            urls.append(path)
-        elif path.startswith('/'):
-            urls.append(f"https://image.tmdb.org/t/p/w185{path}")
-    hero_poster_urls = urls
-
 # Load data at startup
 def load_data():
     """Load the dataset and preprocess it"""
@@ -153,7 +138,6 @@ def load_data():
         process_data(dataset_path, models_dir)
 
     prepare_ranking_features()
-    prepare_hero_posters()
 
 def process_data(dataset_path, models_dir):
     """Process the raw data and save it for future use"""
@@ -409,10 +393,7 @@ def index():
     """Render the main page"""
     # Get all unique genres for the filter
     genres = extract_genres_from_movies()
-    # Two film strips for the hero, each from a different half of the top posters
-    half = len(hero_poster_urls) // 2
-    film_strips = [s for s in (hero_poster_urls[:half], hero_poster_urls[half:]) if s]
-    return render_template('index.html', genres=genres, film_strips=film_strips)
+    return render_template('index.html', genres=genres)
 
 @app.route('/search', methods=['POST'])
 def search():

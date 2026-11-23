@@ -2,31 +2,18 @@
 
 {% block title %}CineWatch - Your personal movie genie!{% endblock %}
 
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/genre-posters.css') }}">{% endblock %}
+
 {% block content %}
 <!-- Hero + Search -->
 <section class="hero-section">
-    {% if film_strips %}
-    <!-- Motion graphic: film strips of real posters drifting behind the hero -->
-    <div class="hero-reel" aria-hidden="true">
-        {% for strip in film_strips %}
-        <div class="film-strip film-strip-{{ loop.index }}" style="--n: {{ strip|length }}">
-            <div class="film-track">
-                {% for copy in range(3) %}{% for url in strip %}
-                <span class="film-frame"><img src="{{ url }}" alt="" decoding="async" fetchpriority="low"></span>
-                {% endfor %}{% endfor %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    <div class="hero-glow" aria-hidden="true"></div>
     <div class="hero-content">
-        <span class="eyebrow"><i class="fas fa-clapperboard"></i> Your personal movie genie</span>
+        <span class="eyebrow">Movie discovery</span>
         <h1 class="hero-title">
             <span class="line"><span style="--i:0">Find your next</span></span>
-            <span class="line"><span class="accent" style="--i:1">favorite movie</span></span>
+            <span class="line"><span class="accent" style="--i:1">favorite movie.</span></span>
         </h1>
-        <p class="hero-sub">Search any title and get hand-picked recommendations from thousands of films.</p>
+        <p class="hero-sub">Start with a film you love. Discover what to watch next.</p>
 
         <div class="search-section">
             <div class="search-input-container">
@@ -50,6 +37,43 @@
             </button>
         </div>
     </div>
+    <section class="motion-gallery" aria-label="Featured genres">
+        <header class="gallery-heading">
+            <h2>Featured genres</h2>
+            <button type="button" class="motion-switch" hidden>
+                <span class="motion-switch-icon" aria-hidden="true"></span>
+                <span class="motion-switch-label">Pause motion</span>
+            </button>
+        </header>
+        <div class="poster-wall">
+            <button type="button" class="genre-poster action-poster" data-poster-genre="Action" aria-label="Browse Action movies">
+                <video class="action-sculpture" aria-hidden="true" muted playsinline loop preload="none"
+                    poster="{{ url_for('static', filename='media/action.webp') }}"
+                    data-src="{{ url_for('static', filename='media/action.mp4') }}"></video>
+                <span class="poster-caption"><span>Action</span><span class="poster-arrow" aria-hidden="true"></span></span>
+            </button>
+            <button type="button" class="genre-poster orbit-poster" data-poster-genre="Science Fiction" aria-label="Browse Science Fiction movies">
+                <span class="orbit-art" aria-hidden="true">
+                    <span class="orbit-globe">
+                        {% for i in range(12) %}<i class="meridian" style="--angle: {{ i * 15 }}deg"></i>{% endfor %}
+                        {% for position, width in [(12, 65), (28, 90), (50, 100), (72, 90), (88, 65)] %}
+                        <i class="parallel" style="--position: {{ position }}%; --width: {{ width }}%"></i>
+                        {% endfor %}
+                    </span>
+                    <span class="orbit-ring"></span>
+                </span>
+                <span class="poster-caption"><span>Sci-Fi</span><span class="poster-arrow" aria-hidden="true"></span></span>
+            </button>
+            <button type="button" class="genre-poster comedy-poster" data-poster-genre="Comedy" aria-label="Browse Comedy movies">
+                <span class="comedy-art" aria-hidden="true">
+                    {% for i in range(3) %}
+                    <span class="comedy-dot"><i class="face-eyes"></i><i class="face-smile"></i></span>
+                    {% endfor %}
+                </span>
+                <span class="poster-caption"><span>Comedy</span><span class="poster-arrow" aria-hidden="true"></span></span>
+            </button>
+        </div>
+    </section>
 </section>
 
 <!-- Search Results -->
@@ -222,9 +246,4 @@
     </div>
 </div>
 
-<!-- Floating Watchlist Button -->
-<button class="btn floating-btn" id="show-watchlist" aria-label="Show watchlist">
-    <i class="fas fa-bookmark"></i>
-    <span class="badge" id="watchlist-count">0</span>
-</button>
 {% endblock %}

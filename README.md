@@ -165,3 +165,7 @@ The system uses the TMDB movie dataset (v11) which includes information about mo
 https://movie-recommender-v2-htgt.onrender.com/
 
 
+
+## Motion artwork
+
+The featured genre posters use a locally rendered Action sculpture, a CSS wireframe globe, and a Comedy animation adapted from Utkarsh Verma’s “3 dots bounce” (SVG Spinners, MIT). [Original animation](https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/3-dots-bounce.svg) · [License](app/static/media/svg-spinners-LICENSE.txt)

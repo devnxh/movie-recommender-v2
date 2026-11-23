@@ -70,18 +70,16 @@ $(document).ready(function() {
         }
     });
     
-    // Genre filter click event
-    $('.genre-icon').on('click', function() {
-        const genre = $(this).data('genre');
-        
-        // Toggle active class
-        $(this).toggleClass('active');
-        
-        // If active, filter by this genre
-        if ($(this).hasClass('active')) {
-            // Deactivate other genres
-            $('.genre-icon').not(this).removeClass('active');
-            
+    // Poster buttons select a genre. An active filter chip also supports clearing it.
+    $('.genre-icon, [data-poster-genre]').on('click', function() {
+        const posterGenre = this.dataset.posterGenre;
+        const genre = posterGenre || this.dataset.genre;
+        const chip = $('.genre-icon').filter((_, button) => button.dataset.genre === genre);
+        const selectGenre = Boolean(posterGenre) || !chip.hasClass('active');
+        $('.genre-icon').removeClass('active');
+        if (selectGenre) {
+            chip.addClass('active');
+
             // Reset pagination
             currentPage = 1;
             currentSearchTerm = '';
