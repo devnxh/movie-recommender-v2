@@ -19,36 +19,28 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block head %}{% endblock %}
 </head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark site-nav sticky-top">
-        <div class="container-xl">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{{ url_for('static', filename='img/Cinewatch.png') }}" alt="CineWatch logo" class="logo-img me-2">
+<body id="top">
+    <a class="skip-link" href="#catalog">Skip to movies</a>
+    <nav class="site-nav sticky-top" aria-label="Main navigation">
+        <div class="container-xl nav-inner">
+            <a class="brand-link" href="/" aria-label="CineWatch home">
+                <span class="brand-mark" aria-hidden="true"><i class="fas fa-play"></i></span>
                 <span class="site-name">Cine<span>Watch</span></span>
             </a>
-            <button class="btn nav-watchlist ms-auto ms-lg-3 me-2 me-lg-0 order-lg-last" id="show-watchlist" aria-label="Show watchlist">
-                <i class="fas fa-bookmark" aria-hidden="true"></i>
-                <span class="badge" id="watchlist-count">0</span>
-            </button>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" id="browse-movies">Browse Movies</a>
-                    </li>
-                </ul>
+            <div class="nav-destinations">
+                <button type="button" class="nav-action" id="browse-movies">Browse</button>
+                <button type="button" class="nav-action" id="quick-search" aria-label="Search movies" aria-keyshortcuts="/">
+                    <i class="fas fa-magnifying-glass" aria-hidden="true"></i><span class="search-nav-text">Search</span><kbd aria-hidden="true">/</kbd>
+                </button>
+                <button type="button" class="nav-action watchlist-action" id="show-watchlist" aria-label="Show watchlist">
+                    <i class="far fa-bookmark" aria-hidden="true"></i><span>Watchlist</span><span class="list-count" id="watchlist-count">0</span>
+                </button>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="container-xl py-4">
+    <main class="container-xl">
         {% block content %}{% endblock %}
     </main>
 
@@ -56,7 +48,7 @@
     <footer class="site-footer">
         <div class="container-xl d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
             <span class="site-name small-name">Cine<span>Watch</span></span>
-            <p class="mb-0">&copy; 2025 CineWatch. All rights reserved.</p>
+            <a class="footer-top" href="#top">Back to top <span aria-hidden="true">↑</span></a>
         </div>
     </footer>
 

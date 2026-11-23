@@ -301,3 +301,20 @@
     .motion-running .meridian { animation-duration: 8s !important; animation-iteration-count: infinite !important; }
     .motion-running .comedy-dot { animation-duration: 1.75s !important; animation-iteration-count: infinite !important; }
 }
+
+/* Keep all three shortcuts and the beginning of the catalog in reach on a phone. */
+@media (max-width: 620px) {
+    .hero-section { gap: .9rem; padding: 1.5rem 0 1.25rem; }
+    .hero-title { font-size: clamp(2.6rem, 9vw, 3.4rem); margin-bottom: .5rem; }
+    .hero-sub { font-size: .9rem; margin-bottom: .85rem; }
+    .gallery-heading { margin-bottom: .35rem; }
+    .gallery-heading h2 { font-size: .77rem; }
+    .motion-switch { min-height: 32px; }
+    .poster-wall { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 1fr; aspect-ratio: 3.25; }
+    .action-poster { grid-row: auto; }
+    .action-poster .poster-caption, .poster-caption { inset: auto 7% 6%; font-size: clamp(1rem, 14cqw, 1.5rem); letter-spacing: -.05em; }
+    .poster-arrow { width: 1.4em; height: 1.4em; }
+    .action-sculpture, .orbit-art, .comedy-art { height: 75%; }
+    .action-sculpture { object-fit: contain; }
+    .orbit-globe { height: 72%; }
+}

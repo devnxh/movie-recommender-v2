@@ -1,3 +1,4 @@
+from functools import lru_cache
 import os
 import pandas as pd
 import numpy as np
@@ -226,7 +227,50 @@ def rank_similar_movies(idx, n):
              + REC_WEIGHTS['quality'] * quality_scores[candidates])
     return candidates[np.argsort(-score)[:n]]
 
-def get_recommendations(title, n=10):
+def positive_integer(value):
+    try:
+        number = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if number > 0 else None
+
+
+def find_catalog_movie(movie_id=None, title=None):
+    """Look up a specific edition by TMDB ID, or an older saved item by title."""
+    movie_id = positive_integer(movie_id)
+    if movie_id is not None and 'id' in movies_df:
+        positions = np.flatnonzero(movies_df['id'].to_numpy() == movie_id)
+        if len(positions):
+            return movies_df.iloc[positions[:1]]
+    if isinstance(title, str) and title in indices:
+        return movies_df.iloc[[indices[title]]]
+    return movies_df.iloc[:0]
+
+
+def catalog_movies(rows, enrich=False):
+    """Serialize just the displayed rows, including null-safe local card metadata."""
+    fields = ['id', 'title', 'release_date', 'runtime', 'vote_average', 'genres', 'poster_path', 'overview']
+    # Older caches may lack optional columns. Flask's JSON must contain null, never NaN.
+    data = rows.reindex(columns=fields).replace([np.inf, -np.inf], np.nan)
+    records = data.astype(object).where(data.notna(), None).to_dict(orient='records')
+    for movie in records:
+        movie['id'] = positive_integer(movie['id'])
+        movie['year'] = positive_integer(str(movie.pop('release_date') or '')[:4])
+        movie['runtime'] = positive_integer(movie['runtime'])
+        poster = movie['poster_path']
+        if poster and not poster.startswith(('http://', 'https://')):
+            poster = f"{TMDB_IMAGE_BASE_URL}/{poster.lstrip('/')}"
+        details = get_movie_details_from_tmdb(movie['title'], movie['id']) if enrich else {}
+        movie['poster_path'] = poster or details.get('poster_path')
+        if enrich and not movie['poster_path']:
+            movie['poster_path'] = "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
+        movie['cast'] = details.get('cast', [])
+        movie['directors'] = details.get('directors', [])
+        movie['age_rating'] = details.get('age_rating', 'Not Rated')
+    return records
+
+
+def get_recommendations(title, n=10, enrich=True, movie_id=None):
     """Get movie recommendations based on similarity"""
     global tfidf_matrix, movies_df, indices
     
@@ -234,12 +278,18 @@ def get_recommendations(title, n=10):
     if tfidf_matrix is None or movies_df is None or indices is None:
         return []
     
-    # Handle exact match first
-    if title in indices:
+    if movie_id:
+        selected = find_catalog_movie(movie_id)
+        if selected.empty:
+            return []
+        idx = selected.index[0]
+    elif not title:
+        return []
+    elif title in indices:
         idx = indices[title]
     else:
         # Try to find a close match if exact title not found
-        close_matches = movies_df[movies_df['title'].str.contains(title, case=False, regex=False)]
+        close_matches = movies_df[movies_df['title'].str.contains(title, case=False, regex=False, na=False)]
         if len(close_matches) > 0:
             # Use the most-voted close match
             close_matches = close_matches.sort_values('vote_count', ascending=False)
@@ -261,39 +311,7 @@ def get_recommendations(title, n=10):
         if len(sim_indices) == 0:
             return []
         
-        # Return the top n most similar movies
-        result = movies_df.iloc[sim_indices][['title', 'vote_average', 'genres', 'poster_path', 'overview']].to_dict(orient='records')
-        
-        # Enhance movies with TMDB details
-        enhanced_result = []
-        for movie in result:
-            # Fix poster path if it's just a relative path
-            if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
-                movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
-            
-            # Try to get additional details from TMDB
-            tmdb_details = get_movie_details_from_tmdb(movie['title'])
-            if tmdb_details:
-                if not movie['poster_path']:
-                    movie['poster_path'] = tmdb_details['poster_path'] or "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-                movie['cast'] = tmdb_details['cast']
-                movie['directors'] = tmdb_details['directors']
-                movie['age_rating'] = tmdb_details['age_rating']
-            else:
-                if not movie['poster_path']:
-                    movie['poster_path'] = "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-                movie['cast'] = []
-                movie['directors'] = []
-                movie['age_rating'] = "Not Rated"
-            
-            enhanced_result.append(movie)
-            
-        # If no results, return empty list
-        if len(enhanced_result) == 0:
-            print(f"No recommendations found for '{title}'")
-            return []
-            
-        return enhanced_result
+        return catalog_movies(movies_df.iloc[sim_indices], enrich=enrich)
     except Exception as e:
         print(f"Error getting recommendations for '{title}': {e}")
         return []
@@ -395,58 +413,30 @@ def index():
     genres = extract_genres_from_movies()
     return render_template('index.html', genres=genres)
 
+def ranked_title_matches(query):
+    """Use the same title ranking for the search box and the selected results."""
+    q = query.strip().lower()
+    positions = np.flatnonzero(titles_lower.str.contains(q, regex=False).to_numpy())
+    matched = titles_lower.iloc[positions]
+    exact = matched.eq(q).to_numpy()
+    prefix = matched.str.startswith(q).to_numpy()
+    order = np.lexsort((-vote_counts[positions], ~prefix, ~exact))
+    return positions[order]
+
+
 @app.route('/search', methods=['POST'])
 def search():
     """Search for movies by title"""
     data = request.get_json()
     query = data.get('query', '')
-    page = data.get('page', 1)
-    
-    if not query:
+    if not isinstance(query, str) or not query.strip():
         return jsonify([])
-    
-    # Find movies that match the query
-    matches = movies_df[movies_df['title'].str.contains(query, case=False, regex=False)]
-    
-    if len(matches) == 0:
-        return jsonify([])
-    
-    # Get the top matches, paginated
-    items_per_page = 12
-    start_idx = (page - 1) * items_per_page
-    end_idx = start_idx + items_per_page
-    
-    # Sort by vote count and get the slice for the current page
-    top_matches = matches.sort_values('vote_count', ascending=False).iloc[start_idx:end_idx]
-    
-    # Convert to list of dictionaries
-    results = top_matches[['title', 'vote_average', 'genres', 'poster_path', 'overview']].to_dict(orient='records')
-    
-    # Enhance with TMDB details
-    enhanced_results = []
-    for movie in results:
-        # Fix poster path if it's just a relative path
-        if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
-            movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
-        
-        # Try to get additional details from TMDB
-        tmdb_details = get_movie_details_from_tmdb(movie['title'])
-        if tmdb_details:
-            if not movie['poster_path']:
-                movie['poster_path'] = tmdb_details['poster_path'] or "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-            movie['cast'] = tmdb_details['cast']
-            movie['directors'] = tmdb_details['directors']
-            movie['age_rating'] = tmdb_details['age_rating']
-        else:
-            if not movie['poster_path']:
-                movie['poster_path'] = "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-            movie['cast'] = []
-            movie['directors'] = []
-            movie['age_rating'] = "Not Rated"
-        
-        enhanced_results.append(movie)
-    
-    return jsonify(enhanced_results)
+    page = positive_integer(data.get('page', 1))
+    if page is None:
+        return jsonify({'error': 'Page must be a positive integer'}), 400
+    start = (page - 1) * 12
+    positions = ranked_title_matches(query)[start:start + 12]
+    return jsonify(catalog_movies(movies_df.iloc[positions], enrich=request.args.get('view') != 'card'))
 
 @app.route('/search_suggestions', methods=['POST'])
 def search_suggestions():
@@ -457,20 +447,10 @@ def search_suggestions():
     if movies_df is None:
         load_data()
         
-    query = request.form.get('query', '')
-    
-    if not query or len(query) < 2:
+    query = request.form.get('query', '').strip()
+    if len(query) < 2:
         return jsonify([])
-    
-    # Titles containing the search term: ones that start with it first, then the most-voted
-    q = query.strip().lower()
-    contains = titles_lower.str.contains(q, regex=False).to_numpy()
-    matches = np.flatnonzero(contains)
-    if len(matches) == 0:
-        return jsonify([])
-    starts = titles_lower.iloc[matches].str.startswith(q).to_numpy()
-    order = np.lexsort((-vote_counts[matches], ~starts))
-    suggestions = movies_df['title'].iloc[matches[order]].drop_duplicates().head(5).tolist()
+    suggestions = movies_df['title'].iloc[ranked_title_matches(query)].drop_duplicates().head(5).tolist()
     return jsonify(suggestions)
 
 @app.route('/recommend', methods=['POST'])
@@ -485,7 +465,7 @@ def recommend():
     title = request.form.get('title', '')
     
     # Get recommendations
-    recommendations = get_recommendations(title)
+    recommendations = get_recommendations(title, enrich=request.args.get('view') != 'card', movie_id=request.form.get('id'))
     
     return jsonify(recommendations)
 
@@ -494,7 +474,9 @@ def movies():
     """Get a list of movies, optionally filtered by genre"""
     try:
         genre = request.args.get('genre', None)
-        page = int(request.args.get('page', 1))
+        page = positive_integer(request.args.get('page', 1))
+        if page is None:
+            return jsonify({'error': 'Page must be a positive integer'}), 400
         items_per_page = 12
         start_idx = (page - 1) * items_per_page
         end_idx = start_idx + items_per_page
@@ -513,37 +495,10 @@ def movies():
             # Get top movies by vote count, paginated
             paginated_movies = movies_df.sort_values('vote_count', ascending=False).iloc[start_idx:end_idx]
         
-        # Convert to list of dictionaries
-        results = paginated_movies[['title', 'vote_average', 'genres', 'poster_path', 'overview']].to_dict(orient='records')
-        
-        # Enhance with TMDB details
-        enhanced_results = []
-        for movie in results:
-            # Fix poster path if it's just a relative path
-            if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
-                movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
-            
-            # Try to get additional details from TMDB
-            tmdb_details = get_movie_details_from_tmdb(movie['title'])
-            if tmdb_details:
-                if not movie['poster_path']:
-                    movie['poster_path'] = tmdb_details['poster_path'] or "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-                movie['cast'] = tmdb_details['cast']
-                movie['directors'] = tmdb_details['directors']
-                movie['age_rating'] = tmdb_details['age_rating']
-            else:
-                if not movie['poster_path']:
-                    movie['poster_path'] = "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-                movie['cast'] = []
-                movie['directors'] = []
-                movie['age_rating'] = "Not Rated"
-            
-            enhanced_results.append(movie)
-        
-        return jsonify(enhanced_results)
-    except Exception as e:
-        print(f"Error getting movies: {e}")
-        return jsonify([])
+        return jsonify(catalog_movies(paginated_movies, enrich=request.args.get('view') != 'card'))
+    except Exception:
+        app.logger.exception("Could not load catalog page")
+        return jsonify({'error': 'Catalog temporarily unavailable'}), 503
 
 @app.route('/default_movies')
 def default_movies():
@@ -552,37 +507,17 @@ def default_movies():
         # Get top movies by vote count
         top_movies = movies_df.sort_values('vote_count', ascending=False).head(12)
         
-        # Convert to list of dictionaries
-        results = top_movies[['title', 'vote_average', 'genres', 'poster_path', 'overview']].to_dict(orient='records')
-        
-        # Enhance with TMDB details
-        enhanced_results = []
-        for movie in results:
-            # Fix poster path if it's just a relative path
-            if movie['poster_path'] and isinstance(movie['poster_path'], str) and not movie['poster_path'].startswith(('http://', 'https://')):
-                movie['poster_path'] = f"{TMDB_IMAGE_BASE_URL}{movie['poster_path']}"
-            
-            # Try to get additional details from TMDB
-            tmdb_details = get_movie_details_from_tmdb(movie['title'])
-            if tmdb_details:
-                if not movie['poster_path']:
-                    movie['poster_path'] = tmdb_details['poster_path'] or "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-                movie['cast'] = tmdb_details['cast']
-                movie['directors'] = tmdb_details['directors']
-                movie['age_rating'] = tmdb_details['age_rating']
-            else:
-                if not movie['poster_path']:
-                    movie['poster_path'] = "https://fakeimg.pl/300x450/333333/ffffff?text=No+Poster"
-                movie['cast'] = []
-                movie['directors'] = []
-                movie['age_rating'] = "Not Rated"
-            
-            enhanced_results.append(movie)
-        
-        return jsonify(enhanced_results)
-    except Exception as e:
-        print(f"Error getting default movies: {e}")
-        return jsonify([])
+        return jsonify(catalog_movies(top_movies, enrich=request.args.get('view') != 'card'))
+    except Exception:
+        app.logger.exception("Could not load popular films")
+        return jsonify({'error': 'Catalog temporarily unavailable'}), 503
+
+@app.get('/movie_details')
+def movie_details():
+    rows = find_catalog_movie(request.args.get('id'), request.args.get('title'))
+    if rows.empty:
+        return jsonify({'error': 'Movie not found'}), 404
+    return jsonify(catalog_movies(rows, enrich=True)[0])
 
 @app.route('/get_trailer', methods=['POST'])
 def get_trailer():
@@ -599,69 +534,78 @@ def get_trailer():
     else:
         return jsonify({"error": "Trailer not found"}), 404
 
+def compact_saved_movie(movie):
+    """Keep catalog references in the cookie, retaining metadata unavailable locally."""
+    rows = find_catalog_movie(movie.get('id'), None if movie.get('id') else movie['title'])
+    if rows.empty:
+        return {key: movie.get(key) for key in (
+            'id', 'title', 'year', 'runtime', 'vote_average', 'genres', 'poster_path', 'overview',
+        )} | {
+            'cast': movie.get('cast', []), 'directors': movie.get('directors', []),
+            'age_rating': movie.get('age_rating', 'Not Rated'),
+        }
+    local = catalog_movies(rows)[0]
+    saved = {'id': local['id'], 'title': local['title']}
+    for field in ('cast', 'directors', 'age_rating'):
+        if movie.get(field) and movie[field] != local[field]:
+            saved[field] = movie[field]
+    return saved
+
+
+def read_saved_movie(saved):
+    # Older cookies contain a full movie. Old or removed titles can still be opened.
+    rows = find_catalog_movie(saved.get('id'), None if saved.get('id') else saved.get('title'))
+    if rows.empty:
+        return saved
+    return {**catalog_movies(rows)[0], **saved}
+
+
+def same_saved_movie(saved, target):
+    if saved.get('id') and target.get('id'):
+        return saved['id'] == target['id']
+    return saved.get('title') == target.get('title')
+
+
 @app.route('/watchlist', methods=['GET', 'POST', 'DELETE'])
 def watchlist():
-    """Handle watchlist operations"""
-    # Initialize watchlist in session if it doesn't exist
-    if 'watchlist' not in session:
-        session['watchlist'] = []
-    
+    saved = session.get('watchlist', [])
     if request.method == 'GET':
-        # Return the watchlist
-        return jsonify(session['watchlist'])
-    
-    elif request.method == 'POST':
-        # Add a movie to the watchlist
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-        
-        # Extract movie from the request
-        movie = data.get('movie', {})
-        
-        if not movie or 'title' not in movie:
-            return jsonify({"error": "Invalid movie data"}), 400
-        
-        # Check if movie is already in watchlist
-        for existing_movie in session['watchlist']:
-            if existing_movie.get('title') == movie.get('title'):
-                return jsonify({"message": "Movie already in watchlist"}), 200
-        
-        # Add movie to watchlist with enhanced details
-        watchlist_movie = {
-            'title': movie.get('title'),
-            'vote_average': movie.get('vote_average'),
-            'genres': movie.get('genres'),
-            'poster_path': movie.get('poster_path'),
-            'overview': movie.get('overview'),
-            'cast': movie.get('cast', []),
-            'directors': movie.get('directors', []),
-            'age_rating': movie.get('age_rating', 'Not Rated')
-        }
-        
-        session['watchlist'].append(watchlist_movie)
-        session.modified = True
-        
-        return jsonify({"message": "Movie added to watchlist"}), 201
-    
-    elif request.method == 'DELETE':
-        # Remove a movie from the watchlist
-        data = request.get_json()
-        
-        if not data or 'title' not in data:
-            return jsonify({"error": "No title provided"}), 400
-        
-        title = data['title']
-        
-        # Find and remove the movie
-        for i, movie in enumerate(session['watchlist']):
-            if movie.get('title') == title:
-                session['watchlist'].pop(i)
-                session.modified = True
-                return jsonify({"message": "Movie removed from watchlist"}), 200
-        
-        return jsonify({"error": "Movie not found in watchlist"}), 404
+        return jsonify([read_saved_movie(movie) for movie in saved])
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Movie data is required'}), 400
+
+    if request.method == 'DELETE' and data.get('clear') is True:
+        session.pop('watchlist', None)
+        return jsonify({'message': 'Watchlist cleared'})
+
+    movie = data.get('movie') if request.method == 'POST' else data
+    if not isinstance(movie, dict) or not isinstance(movie.get('title'), str) or not movie['title'].strip():
+        return jsonify({'error': 'Movie title is required'}), 400
+    if request.method == 'DELETE':
+        for index, entry in enumerate(saved):
+            if same_saved_movie(entry, movie):
+                session['watchlist'] = saved[:index] + saved[index + 1:]
+                return jsonify({'message': 'Movie removed from watchlist'})
+        return jsonify({'error': 'Movie not found in watchlist'}), 404
+
+    if any(same_saved_movie(entry, movie) for entry in saved):
+        return jsonify({'message': 'Movie already in watchlist'})
+    # Compact full records from older sessions on the next addition.
+    updated = [compact_saved_movie(entry) if 'overview' in entry else entry for entry in saved]
+    updated.append(compact_saved_movie(movie))
+    # Flask stores the list in a signed browser cookie. Reject an oversize update
+    # before the browser can silently discard it and lose the existing list.
+    serializer = app.session_interface.get_signing_serializer(app)
+    payload = serializer.dumps({**session, 'watchlist': updated})
+    cookie_bytes = len(app.config['SESSION_COOKIE_NAME']) + len(payload) + len('=; HttpOnly; Path=/')
+    if cookie_bytes > app.config['MAX_COOKIE_SIZE']:
+        return jsonify({'error': 'Your watchlist is full. Remove a film before adding another.'}), 409
+
+    session['watchlist'] = updated
+    return jsonify({'message': 'Movie added to watchlist'}), 201
+
 
 @app.route('/genres')
 def genres():
@@ -701,67 +645,48 @@ def start_keep_alive():
     threading.Thread(target=ping_forever, name='keep-alive', daemon=True).start()
     print(f"Keep-alive: pinging {base_url}/health every {interval}s")
 
-def get_movie_details_from_tmdb(movie_title):
-    """Fetch detailed movie information from TMDB API"""
+def get_movie_details_from_tmdb(movie_title, movie_id=None):
     if not TMDB_API_KEY:
-        return None
-
+        return {}
     try:
-        # Search for the movie
-        search_url = "https://api.themoviedb.org/3/search/movie"
-        response = requests.get(search_url, params={"api_key": TMDB_API_KEY, "query": movie_title}, timeout=10)
-        data = response.json()
-        
-        if 'results' in data and len(data['results']) > 0:
-            movie_id = data['results'][0]['id']
-            
-            # Get detailed movie information
-            details_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
-            details_response = requests.get(
-                details_url,
-                params={"api_key": TMDB_API_KEY, "append_to_response": "credits,release_dates"},
-                timeout=10,
+        if movie_id is None:
+            # Compatibility with old caches that only contain the title.
+            response = requests.get(
+                "https://api.themoviedb.org/3/search/movie",
+                params={"api_key": TMDB_API_KEY, "query": movie_title},
+                timeout=2.5,
             )
-            details_data = details_response.json()
-            
-            # Extract cast (top 5)
-            cast = []
-            if 'credits' in details_data and 'cast' in details_data['credits']:
-                cast = [actor['name'] for actor in details_data['credits']['cast'][:5]]
-            
-            # Extract directors
-            directors = []
-            if 'credits' in details_data and 'crew' in details_data['credits']:
-                directors = [crew['name'] for crew in details_data['credits']['crew'] if crew['job'] == 'Director']
-            
-            # Extract age rating (US certification)
-            age_rating = "Not Rated"
-            if 'release_dates' in details_data and 'results' in details_data['release_dates']:
-                for country in details_data['release_dates']['results']:
-                    if country['iso_3166_1'] == 'US':
-                        for release in country['release_dates']:
-                            if release['certification']:
-                                age_rating = release['certification']
-                                break
-                        break
-            
-            # Get poster path
-            poster_path = None
-            if 'poster_path' in details_data and details_data['poster_path']:
-                poster_path = f"{TMDB_IMAGE_BASE_URL}{details_data['poster_path']}"
-            
-            return {
-                'cast': cast,
-                'directors': directors,
-                'age_rating': age_rating,
-                'poster_path': poster_path,
-                'tmdb_id': movie_id
-            }
-        
-        return None
-    except Exception as e:
-        print(f"Error fetching TMDB details for '{movie_title}': {e}")
-        return None
+            response.raise_for_status()
+            matches = response.json().get('results', [])
+            if not matches:
+                return {}
+            movie_id = matches[0]['id']
+        return fetch_tmdb_details(movie_id)
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        # The local catalog remains usable when TMDB is unavailable.
+        return {}
+
+
+@lru_cache(maxsize=512)
+def fetch_tmdb_details(movie_id):
+    """Cache successful responses only; raised network errors can be retried."""
+    response = requests.get(
+        f"https://api.themoviedb.org/3/movie/{movie_id}",
+        params={"api_key": TMDB_API_KEY, "append_to_response": "credits,release_dates"},
+        timeout=2.5,
+    )
+    response.raise_for_status()
+    data = response.json()
+    credits = data.get('credits') or {}
+    countries = data.get('release_dates', {}).get('results', [])
+    us_releases = next((country['release_dates'] for country in countries if country['iso_3166_1'] == 'US'), [])
+    return {
+        'cast': [actor['name'] for actor in credits.get('cast', [])[:5]],
+        'directors': [person['name'] for person in credits.get('crew', []) if person['job'] == 'Director'],
+        'age_rating': next((release['certification'] for release in us_releases if release.get('certification')), 'Not Rated'),
+        'poster_path': f"{TMDB_IMAGE_BASE_URL}{data['poster_path']}" if data.get('poster_path') else None,
+    }
+
 
 # Load data at startup for faster first request
 load_data()

@@ -1,0 +1,145 @@
+/* Movie posters double as detail buttons. The bookmark is a separate target. */
+.movie-card {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    height: 100%;
+    box-shadow: none;
+}
+.movie-card:hover { box-shadow: none; transform: none; }
+.movie-open {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+}
+.poster-frame {
+    display: block;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    border-radius: .65rem;
+    background: #362b34;
+    color: #f5dbb2;
+}
+.poster-frame[data-tone="1"] { background: #22323e; color: #d0e2ef; }
+.poster-frame[data-tone="2"] { background: #422e27; color: #f6d3b2; }
+.poster-frame[data-tone="3"] { background: #243631; color: #e1e4b9; }
+.poster-frame[data-tone="4"] { background: #342c44; color: #ead4ec; }
+.poster-frame[data-tone="5"] { background: #313643; color: #d3ddf0; }
+.missing-poster {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding: 13% 9%;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 90% 0%, #ffffff16, transparent 65%), repeating-radial-gradient(ellipse at 0 3%, transparent 0 5%, #ffffff0c 5.2% 5.5%, transparent 5.8% 8.2%);
+    font: 750 clamp(1.1rem, 2.4vw, 2.4rem)/1.03 var(--cw-font-display);
+    letter-spacing: -.055em;
+    overflow-wrap: anywhere;
+}
+.poster-frame img { position: absolute; inset: 0; height: 100%; width: 100%; object-fit: cover; }
+.movie-card:hover .card-img-top.is-loaded { filter: none; }
+.movie-save {
+    position: absolute;
+    top: .55rem;
+    right: .55rem;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    color: white;
+    border: 1px solid #ffffff4d;
+    background: #121217d9;
+    backdrop-filter: blur(8px);
+    transition: background .18s ease, color .18s ease;
+}
+.movie-save:is(:hover, :focus-visible) { background: #292930; }
+.movie-save[aria-pressed="true"] { background: var(--cw-amber); color: #181510; border-color: transparent; }
+.movie-open:focus-visible, .movie-save:focus-visible { outline: 3px solid var(--cw-amber); outline-offset: 3px; }
+.movie-caption { display: flex; flex-direction: column; padding: .85rem 0 0; gap: .25rem; width: 100%; }
+.movie-card .card-title {
+    margin: 0;
+    font: 700 clamp(.98rem, 1.6vw, 1.17rem)/1.23 var(--cw-font-display);
+    letter-spacing: -.022em;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.movie-meta { display: flex; align-items: center; gap: .45rem; font-size: .78rem; color: var(--cw-text-muted); }
+.movie-meta > span + .movie-genre::before { content: "·"; margin-right: .45rem; }
+.movie-score { white-space: nowrap; margin-left: auto; }
+.movie-score i, #movieRating i { color: var(--cw-amber); font-size: .76em; margin-right: .28em; }
+
+#watchlist-section { scroll-margin-top: 6rem; }
+.saved-empty { padding: clamp(2rem, 6vw, 4rem) 1rem; text-align: center; border: 1px dashed var(--cw-border-hover); border-radius: 1rem; }
+.saved-empty > i { font-size: 1.65rem; margin-bottom: .85rem; color: var(--cw-amber); }
+.saved-empty h3 { font-size: 1.45rem; }
+.clear-list-prompt { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; padding: 1rem; border: 1px solid var(--cw-border); border-radius: .75rem; margin-bottom: 1rem; }
+.clear-list-prompt span { margin-right: auto; }
+.watchlist-feedback {
+    position: fixed;
+    inset: auto 1rem max(1rem, env(safe-area-inset-bottom)) auto;
+    z-index: 1090;
+    max-width: calc(100% - 2rem);
+    background: #f4f1e9;
+    color: #19191c;
+    border: 1px solid #0002;
+    border-radius: .8rem;
+    padding: .8rem 1.15rem;
+    font-weight: 600;
+    box-shadow: 0 5px 32px #0005;
+}
+.watchlist-feedback button, .detail-trailer { color: inherit; background: none; border: 0; text-decoration: underline; text-underline-offset: .24em; }
+.watchlist-feedback button { margin-left: .45rem; }
+
+.detail-sheet { position: relative; }
+.detail-close {
+    position: absolute;
+    right: .85rem; top: .85rem;
+    z-index: 1;
+    width: 40px; height: 40px;
+    border: 1px solid var(--cw-border);
+    border-radius: 50%;
+    background: var(--cw-surface-1);
+    color: var(--cw-text);
+}
+.detail-layout {
+    display: grid;
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    gap: clamp(1.25rem, 3vw, 2.4rem);
+    padding: clamp(1.35rem, 3vw, 2.6rem);
+}
+.detail-copy { min-width: 0; }
+.detail-copy .modal-title { font: 750 clamp(1.65rem, 4vw, 2.4rem)/1.03 var(--cw-font-display); letter-spacing: -.045em; margin: 0 2rem 1rem 0; overflow-wrap: anywhere; }
+.detail-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; font-size: .82rem; font-weight: 650; }
+#movieGenres { margin: .35rem 0 1.3rem; color: var(--cw-text-muted); font-size: .85rem; }
+#movieOverview { color: var(--cw-text); line-height: 1.6; }
+.detail-credit { font-size: .84rem; margin: .5rem 0; }
+.detail-credit strong { margin-right: .4rem; color: var(--cw-text); }
+.detail-actions { display: grid; gap: .6rem; margin-top: 1.35rem; }
+.detail-actions .btn, .detail-trailer { min-height: 44px; }
+.detail-trailer { justify-self: center; font-size: .86rem; }
+.detail-trailer:disabled { opacity: .65; }
+.detail-trailer i { margin-right: .3rem; font-size: .8em; }
+#trailer-panel { padding: .9rem; border: 1px solid var(--cw-border); border-radius: .75rem; font-size: .86rem; }
+#trailer-status { margin-bottom: .35rem; }
+#trailer-player { margin-bottom: .5rem; }
+#trailer-link { color: var(--cw-text); }
+#trailer-link i { font-size: .75em; }
+@media (max-width: 575px) {
+    .detail-layout { display: block; }
+    .detail-poster { float: left; width: min(25%, 90px); margin: 0 .85rem 1rem 0; }
+    .detail-copy .modal-title { min-height: 1.2em; }
+    #movieOverview { clear: both; }
+    .movie-save { top: .4rem; right: .4rem; }
+}

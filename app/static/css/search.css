@@ -1,0 +1,46 @@
+#search-input {
+    min-width: 0;
+}
+
+.hero-section:has(#search-input[aria-expanded="true"]) {
+    overflow: visible;
+    position: relative;
+    z-index: 3;
+}
+
+#search-suggestions .suggestion-item[aria-selected="true"] {
+    outline: 1px solid currentColor;
+    outline-offset: -2px;
+}
+
+.results-section, .genre-filter-section {
+    scroll-margin-top: 5.5rem;
+}
+
+.discovery-feedback {
+    display: grid;
+    justify-items: center;
+    gap: .65rem;
+    text-align: center;
+}
+
+.discovery-feedback:not(:empty) {
+    margin-block: 1.25rem;
+}
+
+.discovery-feedback p {
+    margin: 0;
+}
+
+.discovery-back {
+    border: 0;
+    padding: .4rem 0;
+    margin-bottom: .5rem;
+    background: transparent;
+    color: var(--cw-text-muted);
+    font: inherit;
+}
+
+.discovery-back:hover {
+    color: var(--cw-text);
+}
