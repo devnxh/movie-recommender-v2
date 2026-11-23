@@ -168,4 +168,6 @@ https://movie-recommender-v2-htgt.onrender.com/
 
 ## Motion artwork
 
+The hero uses original AI-generated film-reel artwork delivered locally in two WebP sizes. Pointer and scroll effects run while the artwork is in view. Both motion controls honor the visitor’s reduced-motion preference.
+
 The featured genre posters use a locally rendered Action sculpture, a CSS wireframe globe, and a Comedy animation adapted from Utkarsh Verma’s “3 dots bounce” (SVG Spinners, MIT). [Original animation](https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/3-dots-bounce.svg) · [License](app/static/media/svg-spinners-LICENSE.txt)

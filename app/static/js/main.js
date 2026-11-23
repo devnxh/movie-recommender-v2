@@ -55,7 +55,7 @@ $(document).ready(function() {
     suggestions.on('pointerdown', '[role="option"]', event => event.preventDefault());
     suggestions.on('click', '[role="option"]', function() { chooseSuggestion($(this).text()); });
 
-    $('#browse-movies').on('click', function(event) {
+    $('#browse-movies, .catalog-jump').on('click', function(event) {
         event.preventDefault();
         openView('browse');
     });

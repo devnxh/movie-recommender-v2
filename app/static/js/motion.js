@@ -1,53 +1,108 @@
-(function () {
-    const gallery = document.querySelector('.motion-gallery');
-    if (gallery) initGalleryMotion(gallery);
-
-    /* ---------- Nav state on scroll ---------- */
+(() => {
     const nav = document.querySelector('.site-nav');
-    if (nav) {
-        const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 8);
-        onScroll();
-        window.addEventListener('scroll', onScroll, { passive: true });
+    const hero = document.querySelector('.orbit-hero');
+    const gallery = document.querySelector('.motion-gallery');
+    const toggles = document.querySelectorAll('.motion-switch');
+    const video = gallery?.querySelector('video');
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+    let enabled = !preference.matches;
+    let heroVisible = false;
+    let galleryVisible = false;
+    let pointer = null;
+    let frame = 0;
+
+    function paintDepth() {
+        frame = 0;
+        if (!hero || !heroVisible || !enabled || document.hidden) return;
+        const box = hero.getBoundingClientRect();
+        const offsetX = pointer ? ((pointer.x - box.left) / box.width - 0.5) * 12 : 0;
+        const offsetY = pointer ? ((pointer.y - box.top) / box.height - 0.5) * 8 : 0;
+        const scroll = Math.min(1, Math.max(0, -box.top / box.height));
+        hero.style.setProperty('--orbit-x', offsetX.toFixed(2) + 'px');
+        hero.style.setProperty('--orbit-y', (offsetY + scroll * 16).toFixed(2) + 'px');
     }
 
-    function initGalleryMotion(gallery) {
-        const video = gallery.querySelector('video');
-        const toggle = gallery.querySelector('.motion-switch');
-        const label = toggle.querySelector('.motion-switch-label');
-        const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-        let enabled = !preference.matches;
-        let visible = !('IntersectionObserver' in window);
-
-        function syncMotion() {
-            const running = enabled && visible && !document.hidden;
-            gallery.classList.toggle('motion-running', running);
-            toggle.classList.toggle('shows-play', !enabled);
-            label.textContent = enabled ? 'Pause motion' : 'Play motion';
-            if (running) {
-                if (!video.src) video.src = video.dataset.src;
-                // Autoplay restrictions leave the poster frame visible.
-                video.play().catch(() => {});
-            } else {
-                video.pause();
-            }
+    function queueDepth() {
+        if (heroVisible && enabled && !document.hidden && !frame) {
+            frame = window.requestAnimationFrame(paintDepth);
         }
+    }
 
+    function syncPlayback() {
+        document.documentElement.classList.toggle('cinema-motion-on', enabled && !document.hidden);
+        const heroRunning = enabled && heroVisible && !document.hidden;
+        const galleryRunning = enabled && galleryVisible && !document.hidden;
+        hero?.classList.toggle('motion-running', heroRunning);
+        gallery?.classList.toggle('motion-running', galleryRunning);
+        if (heroRunning) {
+            hero.classList.add('motion-introduced');
+            queueDepth();
+        }
+        if (galleryRunning) {
+            gallery.classList.add('posters-introduced');
+            if (video?.paused) {
+                if (!video.src) video.src = video.dataset.src;
+                // Keep the still artwork when a browser declines muted playback.
+                video.play().catch(() => {});
+            }
+        } else {
+            video?.pause();
+        }
+        toggles.forEach((toggle) => {
+            toggle.classList.toggle('shows-play', !enabled);
+            toggle.querySelector('.motion-switch-label').textContent = enabled ? 'Pause motion' : 'Play motion';
+        });
+    }
+
+    let navScrolled = false;
+    function onScroll() {
+        const scrolled = window.scrollY > 8;
+        if (scrolled !== navScrolled) {
+            nav?.classList.toggle('is-scrolled', scrolled);
+            navScrolled = scrolled;
+        }
+        queueDepth();
+    }
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    toggles.forEach((toggle) => {
         toggle.hidden = false;
         toggle.addEventListener('click', () => {
             enabled = !enabled;
-            syncMotion();
+            syncPlayback();
         });
-        preference.addEventListener('change', () => {
-            enabled = !preference.matches;
-            syncMotion();
+    });
+    preference.addEventListener('change', () => {
+        enabled = !preference.matches;
+        pointer = null;
+        syncPlayback();
+    });
+    document.addEventListener('visibilitychange', syncPlayback);
+    hero?.addEventListener('pointermove', (event) => {
+        if (!enabled || !finePointer.matches || event.pointerType === 'touch') return;
+        pointer = { x: event.clientX, y: event.clientY };
+        queueDepth();
+    }, { passive: true });
+    hero?.addEventListener('pointerleave', () => {
+        pointer = null;
+        queueDepth();
+    });
+
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                if (entry.target === hero) heroVisible = entry.isIntersecting;
+                if (entry.target === gallery) galleryVisible = entry.isIntersecting;
+            }
+            syncPlayback();
         });
-        document.addEventListener('visibilitychange', syncMotion);
-        if ('IntersectionObserver' in window) {
-            new IntersectionObserver(([entry]) => {
-                visible = entry.isIntersecting;
-                syncMotion();
-            }).observe(gallery);
-        }
-        syncMotion();
+        if (hero) observer.observe(hero);
+        if (gallery) observer.observe(gallery);
+    } else {
+        heroVisible = Boolean(hero);
+        galleryVisible = Boolean(gallery);
     }
+    syncPlayback();
 })();

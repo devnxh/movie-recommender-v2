@@ -6,18 +6,27 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/genre-posters.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/catalog-paper.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orbit-layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orbit-motion.css') }}">
 {% endblock %}
 
 {% block content %}
-<!-- Hero + Search -->
-<section class="hero-section">
-    <div class="hero-content">
-        <h1 class="hero-title">
-            <span class="line"><span style="--i:0">Find your next</span></span>
-            <span class="line"><span class="accent" style="--i:1">favorite movie.</span></span>
-        </h1>
-        <p class="hero-sub">Search for a film you love to find more like it.</p>
-
+<section class="orbit-hero" aria-labelledby="discover-title">
+    <div class="orbit-scene" aria-hidden="true">
+        <img class="orbit-image" src="{{ url_for('static', filename='media/orbital-reel.webp') }}"
+             srcset="{{ url_for('static', filename='media/orbital-reel-small.webp') }} 880w, {{ url_for('static', filename='media/orbital-reel.webp') }} 1672w"
+             sizes="100vw" width="1672" height="941" fetchpriority="high" alt="">
+        <span class="orbit-stars"></span>
+        <span class="reel-orbit"><span class="orbit-traveler"></span></span>
+    </div>
+    <div class="orbit-inner container-xl">
+        <div class="orbit-copy">
+            <h1 class="hero-title" id="discover-title">
+                <span class="line"><span style="--i:0">Find your</span></span>
+                <span class="line"><span class="accent" style="--i:1">next film.</span></span>
+            </h1>
+            <p class="hero-sub">Start with a film you love. Discover more like it.</p>
         <form class="search-section" id="movie-search-form" role="search">
             <div class="search-input-container">
                 <i class="fas fa-magnifying-glass search-icon" aria-hidden="true"></i>
@@ -30,48 +39,18 @@
             </div>
             <span id="suggestion-status" class="visually-hidden" role="status"></span>
         </form>
-
-
-    </div>
-    <section class="motion-gallery" aria-label="Featured genres">
-        <header class="gallery-heading">
-            <h2>Featured genres</h2>
+        </div>
+        <div class="orbit-foot">
+            <a class="catalog-jump" href="#catalog"><span class="jump-arrow" aria-hidden="true">↓</span> Explore films</a>
+            <a class="genres-jump" href="#genre-gallery">Browse by genre</a>
             <button type="button" class="motion-switch" hidden>
-                <span class="motion-switch-icon" aria-hidden="true"></span>
-                <span class="motion-switch-label">Pause motion</span>
-            </button>
-        </header>
-        <div class="poster-wall">
-            <button type="button" class="genre-poster action-poster" data-poster-genre="Action" aria-label="Browse Action movies">
-                <video class="action-sculpture" aria-hidden="true" muted playsinline loop preload="none"
-                    poster="{{ url_for('static', filename='media/action.webp') }}"
-                    data-src="{{ url_for('static', filename='media/action.mp4') }}"></video>
-                <span class="poster-caption"><span>Action</span><span class="poster-arrow" aria-hidden="true"></span></span>
-            </button>
-            <button type="button" class="genre-poster orbit-poster" data-poster-genre="Science Fiction" aria-label="Browse Science Fiction movies">
-                <span class="orbit-art" aria-hidden="true">
-                    <span class="orbit-globe">
-                        {% for i in range(12) %}<i class="meridian" style="--angle: {{ i * 15 }}deg"></i>{% endfor %}
-                        {% for position, width in [(12, 65), (28, 90), (50, 100), (72, 90), (88, 65)] %}
-                        <i class="parallel" style="--position: {{ position }}%; --width: {{ width }}%"></i>
-                        {% endfor %}
-                    </span>
-                    <span class="orbit-ring"></span>
-                </span>
-                <span class="poster-caption"><span>Sci-Fi</span><span class="poster-arrow" aria-hidden="true"></span></span>
-            </button>
-            <button type="button" class="genre-poster comedy-poster" data-poster-genre="Comedy" aria-label="Browse Comedy movies">
-                <span class="comedy-art" aria-hidden="true">
-                    {% for i in range(3) %}
-                    <span class="comedy-dot"><i class="face-eyes"></i><i class="face-smile"></i></span>
-                    {% endfor %}
-                </span>
-                <span class="poster-caption"><span>Comedy</span><span class="poster-arrow" aria-hidden="true"></span></span>
+                <span class="motion-switch-icon" aria-hidden="true"></span><span class="motion-switch-label">Pause motion</span>
             </button>
         </div>
-    </section>
+    </div>
 </section>
 
+<div class="catalog-shell container-xl">
 <section id="catalog" tabindex="-1" class="genre-filter-section" aria-label="Browse movies by genre">
     {% set primary_genres = ['Action', 'Comedy', 'Drama', 'Science Fiction', 'Thriller'] %}
     {% macro genre_chip(genre) -%}
@@ -184,6 +163,48 @@
         <!-- Top movies will be displayed here -->
     </div>
 </section>
+
+</div>
+
+<div class="genre-stage">
+    <section id="genre-gallery" class="motion-gallery container-xl" aria-labelledby="genre-gallery-title">
+        <header class="gallery-heading">
+            <h2 id="genre-gallery-title">Explore by genre</h2>
+            <button type="button" class="motion-switch" hidden>
+                <span class="motion-switch-icon" aria-hidden="true"></span>
+                <span class="motion-switch-label">Pause motion</span>
+            </button>
+        </header>
+        <div class="poster-wall">
+            <button type="button" class="genre-poster action-poster" data-poster-genre="Action" aria-label="Browse Action movies">
+                <video class="action-sculpture" aria-hidden="true" muted playsinline loop preload="none"
+                    poster="{{ url_for('static', filename='media/action.webp') }}"
+                    data-src="{{ url_for('static', filename='media/action.mp4') }}"></video>
+                <span class="poster-caption"><span>Action</span><span class="poster-arrow" aria-hidden="true"></span></span>
+            </button>
+            <button type="button" class="genre-poster orbit-poster" data-poster-genre="Science Fiction" aria-label="Browse Science Fiction movies">
+                <span class="orbit-art" aria-hidden="true">
+                    <span class="orbit-globe">
+                        {% for i in range(12) %}<i class="meridian" style="--angle: {{ i * 15 }}deg"></i>{% endfor %}
+                        {% for position, width in [(12, 65), (28, 90), (50, 100), (72, 90), (88, 65)] %}
+                        <i class="parallel" style="--position: {{ position }}%; --width: {{ width }}%"></i>
+                        {% endfor %}
+                    </span>
+                    <span class="orbit-ring"></span>
+                </span>
+                <span class="poster-caption"><span>Sci-Fi</span><span class="poster-arrow" aria-hidden="true"></span></span>
+            </button>
+            <button type="button" class="genre-poster comedy-poster" data-poster-genre="Comedy" aria-label="Browse Comedy movies">
+                <span class="comedy-art" aria-hidden="true">
+                    {% for i in range(3) %}
+                    <span class="comedy-dot"><i class="face-eyes"></i><i class="face-smile"></i></span>
+                    {% endfor %}
+                </span>
+                <span class="poster-caption"><span>Comedy</span><span class="poster-arrow" aria-hidden="true"></span></span>
+            </button>
+        </div>
+    </section>
+</div>
 
 <!-- Movie details -->
 <div class="modal fade" id="movieModal" tabindex="-1" aria-labelledby="movieModalLabel" aria-hidden="true">
