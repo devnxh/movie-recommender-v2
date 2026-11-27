@@ -16,7 +16,7 @@
 
     document.getElementById('quick-search').addEventListener('click', focusSearch);
     document.addEventListener('keydown', (event) => {
-        if (event.defaultPrevented || event.isComposing || event.repeat || document.querySelector('.modal.show')) return;
+        if (event.defaultPrevented || event.isComposing || event.repeat || document.querySelector('.modal.show, dialog[open]')) return;
         if (event.key !== '/' || event.altKey || event.ctrlKey || event.metaKey) return;
         if (event.target.closest('input, textarea, select, [contenteditable]')) return;
         event.preventDefault();

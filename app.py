@@ -1,4 +1,5 @@
 from functools import lru_cache
+from urllib.parse import urlencode
 import os
 import pandas as pd
 import numpy as np
@@ -15,8 +16,12 @@ import requests
 import json
 import re
 
+from accounts import current_user_id, favorite_sets, init_accounts
+from discovery_filters import InvalidFilter, filtered_movies
+from personalization import personalized_ids
+from reviews import register_reviews
+
 app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
-app.secret_key = 'cinewatch_secret_key'  # For session management
 
 # Global variables
 movies_df = None
@@ -28,6 +33,7 @@ quality_scores = None   # 0..1, vote-weighted rating blended with popularity
 genre_sets = None       # frozenset of lowercase genres per row
 vote_counts = None
 titles_lower = None     # lowercase titles for fast search suggestions
+catalog_rows_by_id = {}  # current catalog ID -> matrix row, ordered most-voted first
 
 # Recommendation ranking: text similarity finds candidates, then genre overlap and quality re-rank them
 REC_CANDIDATE_POOL = 400
@@ -35,8 +41,7 @@ REC_MIN_VOTES = 100       # ignore films almost nobody has rated (falls back if 
 REC_WEIGHTS = {'similarity': 0.50, 'genre': 0.30, 'quality': 0.20}
 QUALITY_PRIOR_VOTES = 500  # votes needed before a film's own rating outweighs the average
 
-# YouTube API key - in a real app, this would be stored securely
-YOUTUBE_API_KEY = "YOUR_YOUTUBE_API_KEY"  # Replace with your actual API key if available
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "").strip()
 
 # TMDB API key - read from the environment, never commit it.
 # Without it the app still works, just without extra TMDB details (cast, directors, age rating).
@@ -68,7 +73,7 @@ def build_title_index(df):
 
 def prepare_ranking_features():
     """Precompute the per-movie numbers used to rank recommendations and suggestions."""
-    global quality_scores, genre_sets, vote_counts, titles_lower
+    global quality_scores, genre_sets, vote_counts, titles_lower, catalog_rows_by_id
 
     votes = movies_df['vote_count'].fillna(0).to_numpy(dtype=float)
     ratings = movies_df['vote_average'].fillna(0).to_numpy(dtype=float)
@@ -87,6 +92,14 @@ def prepare_ranking_features():
         for genres in movies_df['genres'].fillna('')
     ]
     titles_lower = movies_df['title'].fillna('').str.lower()
+
+    catalog_rows_by_id = {}
+    if 'id' in movies_df:
+        ids = movies_df['id'].to_numpy()
+        for row in np.argsort(-votes, kind='stable'):
+            movie_id = positive_integer(ids[row])
+            if movie_id is not None:
+                catalog_rows_by_id.setdefault(movie_id, int(row))
 
 # Load data at startup
 def load_data():
@@ -205,6 +218,11 @@ def rank_similar_movies(idx, n):
     sim[idx] = -1.0
     sim[(titles_lower == titles_lower.iat[idx]).to_numpy()] = -1.0
 
+    return rank_candidates(sim, genre_sets[idx], n)
+
+
+def rank_candidates(sim, source_genres, n):
+    """Re-rank text matches using the same genre and quality rules across feeds."""
     rated_enough = vote_counts >= REC_MIN_VOTES
     if rated_enough.sum() > n * 3:
         sim = np.where(rated_enough, sim, -1.0)
@@ -215,7 +233,6 @@ def rank_similar_movies(idx, n):
     if len(candidates) == 0:
         return []
 
-    source_genres = genre_sets[idx]
     genre_overlap = np.array([
         len(source_genres & genre_sets[c]) / max(1, len(source_genres | genre_sets[c]))
         for c in candidates
@@ -238,10 +255,8 @@ def positive_integer(value):
 def find_catalog_movie(movie_id=None, title=None):
     """Look up a specific edition by TMDB ID, or an older saved item by title."""
     movie_id = positive_integer(movie_id)
-    if movie_id is not None and 'id' in movies_df:
-        positions = np.flatnonzero(movies_df['id'].to_numpy() == movie_id)
-        if len(positions):
-            return movies_df.iloc[positions[:1]]
+    if movie_id in catalog_rows_by_id:
+        return movies_df.iloc[[catalog_rows_by_id[movie_id]]]
     if isinstance(title, str) and title in indices:
         return movies_df.iloc[[indices[title]]]
     return movies_df.iloc[:0]
@@ -316,50 +331,35 @@ def get_recommendations(title, n=10, enrich=True, movie_id=None):
         print(f"Error getting recommendations for '{title}': {e}")
         return []
 
-def get_movie_trailer(title):
-    """Get a movie trailer from YouTube"""
-    try:
-        # Clean the title for search
-        search_query = f"{title} official trailer"
-        
-        # If YouTube API key is not available, return a dummy URL
-        if YOUTUBE_API_KEY == "YOUR_YOUTUBE_API_KEY":
-            # Return a fallback method using a search URL
-            return {
-                "title": f"{title} - Official Trailer",
-                "video_id": None,
-                "search_url": f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
-            }
-        
-        # Make a request to the YouTube API
-        url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={search_query}&type=video&key={YOUTUBE_API_KEY}&maxResults=1"
-        response = requests.get(url)
-        data = response.json()
-        
-        if 'items' in data and len(data['items']) > 0:
-            video_id = data['items'][0]['id']['videoId']
-            video_title = data['items'][0]['snippet']['title']
-            return {
-                "title": video_title,
-                "video_id": video_id,
-                "embed_url": f"https://www.youtube.com/embed/{video_id}"
-            }
-        else:
-            # Fallback to a search URL
-            return {
-                "title": f"{title} - Official Trailer",
-                "video_id": None,
-                "search_url": f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
-            }
-    except Exception as e:
-        print(f"Error getting trailer for '{title}': {e}")
-        # Return a fallback URL in case of error
-        search_query = f"{title} official trailer"
-        return {
-            "title": f"{title} - Official Trailer",
-            "video_id": None,
-            "search_url": f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
-        }
+def get_movie_trailer(title, movie_id=None):
+    """Prefer the distributor's trailer for this edition, then fall back to search."""
+    query = f"{title} official trailer"
+    trailer = {
+        'title': query, 'video_id': None,
+        'search_url': 'https://www.youtube.com/results?' + urlencode({'search_query': query}),
+    }
+    details = get_movie_details_from_tmdb(title, movie_id)
+    video = details.get('trailer')
+    if not video and YOUTUBE_API_KEY:
+        try:
+            response = requests.get(
+                'https://www.googleapis.com/youtube/v3/search',
+                params={'part': 'snippet', 'q': query, 'type': 'video', 'key': YOUTUBE_API_KEY, 'maxResults': 1},
+                timeout=2.5,
+            )
+            response.raise_for_status()
+            items = response.json().get('items', [])
+            if items:
+                video_id = items[0].get('id', {}).get('videoId', '')
+                if re.fullmatch(r'[A-Za-z0-9_-]{11}', video_id):
+                    video = {'video_id': video_id, 'title': items[0].get('snippet', {}).get('title') or query}
+        except (requests.RequestException, ValueError, TypeError, AttributeError):
+            pass
+    if video:
+        trailer.update(video)
+        trailer['embed_url'] = 'https://www.youtube.com/embed/' + video['video_id']
+    return trailer
+
 
 def extract_genres_from_movies():
     """Extract all unique genres from the movies dataframe"""
@@ -453,6 +453,31 @@ def search_suggestions():
     suggestions = movies_df['title'].iloc[ranked_title_matches(query)].drop_duplicates().head(5).tolist()
     return jsonify(suggestions)
 
+def similar_favorite_ids(favorites, limit):
+    rows = [catalog_rows_by_id[movie_id] for movie_id in sorted(favorites)]
+    profile = np.asarray(tfidf_matrix[rows].sum(axis=0))
+    similarity = cosine_similarity(profile, tfidf_matrix).ravel()
+    similarity[rows] = -1
+    genres = set().union(*(genre_sets[row] for row in rows))
+    candidates = rank_candidates(similarity, genres, limit)
+    return movies_df['id'].iloc[candidates].tolist()
+
+
+@app.get('/api/for-you')
+def for_you():
+    member_id = current_user_id()
+    favorites = favorite_sets(member_id) if member_id is not None else {}
+    movie_ids, basis = personalized_ids(member_id, favorites, catalog_rows_by_id, similar_favorite_ids)
+    rows = movies_df.iloc[[catalog_rows_by_id[movie_id] for movie_id in movie_ids]]
+    if not catalog_rows_by_id:
+        # Old preprocessed catalogs may not have TMDB IDs.
+        rows = movies_df.nlargest(12, 'vote_count')
+    response = jsonify(movies=catalog_movies(rows), basis=basis)
+    response.cache_control.no_store = True
+    response.vary.add('Cookie')
+    return response
+
+
 @app.route('/recommend', methods=['POST'])
 def recommend():
     """Get movie recommendations"""
@@ -471,34 +496,53 @@ def recommend():
 
 @app.route('/movies')
 def movies():
-    """Get a list of movies, optionally filtered by genre"""
+    """Browse a filtered catalog page, using the same sort order on every page."""
+    page = positive_integer(request.args.get('page', 1))
+    if page is None:
+        return jsonify({'error': 'Page must be a positive integer'}), 400
     try:
-        genre = request.args.get('genre', None)
-        page = positive_integer(request.args.get('page', 1))
-        if page is None:
-            return jsonify({'error': 'Page must be a positive integer'}), 400
-        items_per_page = 12
-        start_idx = (page - 1) * items_per_page
-        end_idx = start_idx + items_per_page
-        
-        if genre:
-            # Filter by genre
-            filtered_movies = movies_df[movies_df['genres'].str.contains(genre, case=False, regex=False)]
-            # Sort by popularity or vote count
-            if 'popularity' in filtered_movies.columns:
-                filtered_movies = filtered_movies.sort_values('popularity', ascending=False)
-            else:
-                filtered_movies = filtered_movies.sort_values('vote_count', ascending=False)
-            # Get paginated movies
-            paginated_movies = filtered_movies.iloc[start_idx:end_idx]
-        else:
-            # Get top movies by vote count, paginated
-            paginated_movies = movies_df.sort_values('vote_count', ascending=False).iloc[start_idx:end_idx]
-        
-        return jsonify(catalog_movies(paginated_movies, enrich=request.args.get('view') != 'card'))
+        matches = filtered_movies(movies_df, request.args)
+        start = (page - 1) * 12
+        return jsonify(catalog_movies(matches.iloc[start:start + 12], enrich=request.args.get('view') != 'card'))
+    except InvalidFilter as error:
+        return jsonify({'error': str(error)}), 400
     except Exception:
         app.logger.exception("Could not load catalog page")
         return jsonify({'error': 'Catalog temporarily unavailable'}), 503
+
+@app.get('/api/surprise')
+def surprise_movie():
+    """Draw a matching film, favoring well-reviewed titles over barely rated entries."""
+    try:
+        matches = filtered_movies(movies_df, request.args)
+    except InvalidFilter as exc:
+        return jsonify({'error': str(exc)}), 400
+    recent = request.args.get('recent', '').split(',')[-24:]
+    recent_ids = [int(value) for value in recent if value.isascii() and value.isdigit() and len(value) < 13]
+    # With old caches lacking IDs a pick is still possible, without recent-pick tracking.
+    ids = pd.to_numeric(matches['id'], errors='coerce') if 'id' in matches else None
+    eligible = matches.loc[~ids.isin(recent_ids)] if ids is not None else matches
+    restarted = eligible.empty and not matches.empty
+    if restarted:
+        eligible = matches
+        if len(matches) > 1 and recent_ids and ids is not None:
+            other = matches.loc[ids != recent_ids[-1]]
+            if not other.empty:
+                eligible = other
+    movie = None
+    has_alternative = False
+    if not eligible.empty:
+        votes = vote_counts[eligible.index]
+        quality = quality_scores[eligible.index]
+        weights = 0.05 + np.log1p(np.maximum(0, votes)) ** 2 * np.maximum(0, quality)
+        pick = eligible.sample(n=1, weights=weights)
+        movie = catalog_movies(pick)[0]
+        same_film = ids.eq(movie['id']) if movie['id'] else matches['title'].eq(movie['title'])
+        has_alternative = not bool(same_film.all())
+    response = jsonify(movie=movie, restarted=restarted, has_alternative=has_alternative)
+    response.cache_control.no_store = True
+    return response
+
 
 @app.route('/default_movies')
 def default_movies():
@@ -517,7 +561,11 @@ def movie_details():
     rows = find_catalog_movie(request.args.get('id'), request.args.get('title'))
     if rows.empty:
         return jsonify({'error': 'Movie not found'}), 404
-    return jsonify(catalog_movies(rows, enrich=True)[0])
+    movie = catalog_movies(rows)[0]
+    details = get_movie_details_from_tmdb(movie['title'], movie['id'])
+    movie.update({key: value for key, value in details.items() if value is not None})
+    movie['tmdb_status'] = 'updated' if details else 'catalog'
+    return jsonify(movie)
 
 @app.route('/get_trailer', methods=['POST'])
 def get_trailer():
@@ -527,7 +575,7 @@ def get_trailer():
     if not title:
         return jsonify({"error": "No title provided"}), 400
     
-    trailer_info = get_movie_trailer(title)
+    trailer_info = get_movie_trailer(title, positive_integer(request.form.get('id')))
     
     if trailer_info:
         return jsonify(trailer_info)
@@ -661,18 +709,18 @@ def get_movie_details_from_tmdb(movie_title, movie_id=None):
             if not matches:
                 return {}
             movie_id = matches[0]['id']
-        return fetch_tmdb_details(movie_id)
-    except (requests.RequestException, ValueError, KeyError, TypeError):
+        return fetch_tmdb_details(movie_id, int(time.monotonic() // 900))
+    except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError):
         # The local catalog remains usable when TMDB is unavailable.
         return {}
 
 
 @lru_cache(maxsize=512)
-def fetch_tmdb_details(movie_id):
-    """Cache successful responses only; raised network errors can be retried."""
+def fetch_tmdb_details(movie_id, cache_window):
+    """Refresh selected-film data each 15-minute window. Failures remain retryable."""
     response = requests.get(
         f"https://api.themoviedb.org/3/movie/{movie_id}",
-        params={"api_key": TMDB_API_KEY, "append_to_response": "credits,release_dates"},
+        params={"api_key": TMDB_API_KEY, "append_to_response": "credits,release_dates,videos,reviews"},
         timeout=2.5,
     )
     response.raise_for_status()
@@ -680,13 +728,51 @@ def fetch_tmdb_details(movie_id):
     credits = data.get('credits') or {}
     countries = data.get('release_dates', {}).get('results', [])
     us_releases = next((country['release_dates'] for country in countries if country['iso_3166_1'] == 'US'), [])
+    trailers = [
+        video for video in data.get('videos', {}).get('results', [])
+        if video.get('site') == 'YouTube' and video.get('type') == 'Trailer'
+        and re.fullmatch(r'[A-Za-z0-9_-]{11}', video.get('key') or '')
+    ]
+    trailer = max(trailers, key=lambda video: (bool(video.get('official')), video.get('published_at') or ''), default=None)
+    reviews = []
+    for item in data.get('reviews', {}).get('results', []):
+        content = (item.get('content') or '').strip()
+        if not content:
+            continue
+        review_id = item.get('id') or ''
+        reviews.append({
+            'author': item.get('author') or 'TMDB member',
+            'excerpt': content[:360].rstrip() + ('…' if len(content) > 360 else ''),
+            'url': 'https://www.themoviedb.org/review/' + review_id if re.fullmatch(r'[a-zA-Z0-9]+', review_id)
+                   else f'https://www.themoviedb.org/movie/{movie_id}/reviews',
+        })
+        if len(reviews) == 3:
+            break
+    genres = ', '.join(genre['name'] for genre in data.get('genres', []) if genre.get('name'))
+    votes = data.get('vote_count')
     return {
+        'vote_average': data.get('vote_average') if votes else None,
+        'vote_count': votes,
+        'year': positive_integer((data.get('release_date') or '')[:4]),
+        'runtime': positive_integer(data.get('runtime')),
+        'genres': genres or None,
+        'overview': data.get('overview') or None,
+        'trailer': {'title': trailer.get('name') or 'Trailer', 'video_id': trailer['key']} if trailer else None,
+        'tmdb_reviews': reviews,
         'cast': [actor['name'] for actor in credits.get('cast', [])[:5]],
         'directors': [person['name'] for person in credits.get('crew', []) if person['job'] == 'Director'],
         'age_rating': next((release['certification'] for release in us_releases if release.get('certification')), 'Not Rated'),
         'poster_path': f"{TMDB_IMAGE_BASE_URL}{data['poster_path']}" if data.get('poster_path') else None,
     }
 
+
+def favorite_cards(movie_ids):
+    positions = [catalog_rows_by_id[movie_id] for movie_id in movie_ids if movie_id in catalog_rows_by_id]
+    return catalog_movies(movies_df.iloc[positions]) if positions else []
+
+
+init_accounts(app, favorite_cards)
+register_reviews(app, find_catalog_movie)
 
 # Load data at startup for faster first request
 load_data()

@@ -1,0 +1,20 @@
+<dialog id="account-dialog" aria-labelledby="account-title">
+    <button type="button" id="account-close" class="account-close" aria-label="Close account"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+    <h2 id="account-title">Sign in</h2>
+    <p id="account-intro">Keep your favorite films and get personal recommendations.</p>
+    <form id="account-form">
+        <label for="account-username">Username</label>
+        <input id="account-username" name="username" type="text" autocapitalize="none" spellcheck="false" autocomplete="username" maxlength="32" required>
+        <label for="account-password">Password</label>
+        <input id="account-password" name="password" type="password" autocomplete="current-password" maxlength="128" required>
+        <button type="submit" class="account-primary" id="account-submit">Sign in</button>
+        <button type="button" class="account-link" id="account-mode">Create an account</button>
+    </form>
+    <div id="account-profile" hidden>
+        <button class="account-primary" type="button" data-personal-view="for-you">For you <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+        <button class="account-secondary" type="button" data-personal-view="favorites"><i class="far fa-heart" aria-hidden="true"></i> Favorite films</button>
+        <button class="account-link" type="button" id="account-signout">Sign out</button>
+    </div>
+    <p id="account-message" role="status" aria-live="polite"></p>
+    <button type="button" id="account-retry" class="account-secondary" hidden>Try again</button>
+</dialog>

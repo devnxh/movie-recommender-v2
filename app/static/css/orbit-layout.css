@@ -173,3 +173,28 @@ body::after { display: none; }
     .orbit-foot { gap: .6rem; }
     .jump-arrow { width: 1.4rem; height: 1.4rem; }
 }
+
+.catalog-tools {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .55rem 1rem;
+    margin-top: .65rem;
+}
+.catalog-tools #catalog-refine { flex: 1 1 12rem; margin: 0; }
+.pick-film {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    min-height: 42px;
+    padding: .5rem 1rem;
+    border-radius: 2rem;
+    background: #392a41;
+    color: #fff5ff;
+    border: 1px solid #392a41;
+    font: 650 .82rem var(--cw-font-body);
+}
+.pick-film:is(:hover, :focus-visible) { background: #584463; }
+.pick-film[aria-busy="true"], .pick-another[aria-busy="true"] { cursor: progress; }
+.pick-notice { margin: .5rem 0 0; color: #604a61; font-size: .85rem; }

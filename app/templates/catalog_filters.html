@@ -1,0 +1,35 @@
+<details id="catalog-refine" class="catalog-refine">
+    <summary>Filters &amp; sort<span id="refine-count"></span></summary>
+    <form id="catalog-filters" class="refine-form">
+        <label>From year
+            <input type="number" inputmode="numeric" name="year_min" min="1000" max="9999" placeholder="Any year">
+        </label>
+        <label>Through year
+            <input type="number" inputmode="numeric" name="year_max" min="1000" max="9999" placeholder="Any year">
+        </label>
+        <label>Minimum rating
+            <select name="min_rating">
+                <option value="">Any rating</option>
+                <option value="6">6+ / 10</option>
+                <option value="7">7+ / 10</option>
+                <option value="8">8+ / 10</option>
+                <option value="9">9+ / 10</option>
+            </select>
+        </label>
+        <label>Maximum length
+            <input type="number" inputmode="numeric" name="max_runtime" min="1" placeholder="Any (minutes)">
+        </label>
+        <label>Sort by
+            <select name="sort">
+                <option value="">Popular</option>
+                <option value="rating">Highest rated</option>
+                <option value="newest">Newest first</option>
+                <option value="shortest">Shortest first</option>
+            </select>
+        </label>
+        <div class="refine-actions">
+            <button type="submit">Apply filters</button>
+            <button type="button" id="reset-refinements">Reset filters</button>
+        </div>
+    </form>
+</details>

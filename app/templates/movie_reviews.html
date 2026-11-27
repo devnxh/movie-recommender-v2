@@ -1,0 +1,29 @@
+<details class="movie-reviews" id="movie-reviews" hidden>
+    <summary>Reviews</summary>
+    <div class="review-section">
+        <h3>CineWatch reviews</h3>
+        <p id="review-status" role="status"></p>
+        <div id="viewer-reviews"></div>
+        <button type="button" class="btn btn-glass btn-sm" id="write-review" hidden>Write a review</button>
+        <button type="button" class="btn btn-glass btn-sm" id="review-retry" hidden>Try again</button>
+        <form id="review-form" hidden>
+            <label for="review-rating">Your rating</label>
+            <select id="review-rating" required>
+                <option value="">Choose a rating</option>
+                {% for rating in range(1, 11) %}<option value="{{ rating }}">{{ rating }} / 10</option>{% endfor %}
+            </select>
+            <label for="review-body">Your review</label>
+            <textarea id="review-body" rows="3" maxlength="1200" required></textarea>
+            <div class="review-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Publish review</button>
+                <button type="button" id="cancel-review" class="btn btn-glass btn-sm">Cancel</button>
+                <button type="button" id="delete-review" class="btn btn-glass btn-sm" hidden>Delete review</button>
+            </div>
+        </form>
+    </div>
+    <div class="review-section">
+        <h3>TMDB reviews</h3>
+        <div id="tmdb-reviews"></div>
+        <a id="tmdb-reviews-link" target="_blank" rel="noopener noreferrer">Read reviews on TMDB</a>
+    </div>
+</details>

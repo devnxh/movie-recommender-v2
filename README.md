@@ -10,32 +10,27 @@
 
 Discover your next favorite movie with CineWatch - an intelligent movie recommendation system powered by advanced content-based filtering and machine learning!
 
-[View Demo](https://movie-recommender-v2.vercel.app/) • [Report Bug](https://github.com/devnxh/movie-recommender-v2/issues) • [Request Feature](https://github.com/devnxh/movie-recommender-v2/issues)
+[View Demo](https://movie-recommender-v2-htgt.onrender.com/) • [Report Bug](https://github.com/devnxh/movie-recommender-v2/issues) • [Request Feature](https://github.com/devnxh/movie-recommender-v2/issues)
 
 </div>
 
 ## ✨ Features
 
-- 🔍 **Smart Search** - Find movies instantly with intelligent search suggestions
-- 🎯 **Personalized Recommendations** - Get movie suggestions based on your preferences
-- 🏷️ **Genre Filtering** - Browse movies by your favorite genres
-- 📋 **Watchlist** - Save movies to watch later
-- 🎦 **Movie Details** - View comprehensive movie information, including:
-  - Cast and directors
-  - Age ratings
-  - Movie trailers
-  - Plot overview
-- 📱 **Responsive Design** - Perfect experience on all devices
-- ⚡ **Fast Loading** - Optimized performance with progress indicators
+- **Browse and search.** Find a title as you type or browse by genre. Use **Filters & sort** to set a release-year range, minimum rating or maximum runtime, then sort by popularity, rating, release date or runtime.
+- **Pick for me.** Draw a film that fits your applied filters. Select **Pick another film** in its details to draw again. Recent picks stay out of the draw while other matches are available.
+- **Watchlist and favorites.** Save films to a watchlist in this browser as a guest. Sign in to keep favorites across devices and open your **For you** recommendations from the account menu.
+- **Film details and trailers.** See the synopsis, rating and runtime, or find similar films. With TMDB configured, details can include current metadata, credits, age certification, trailers and review excerpts. When a trailer cannot be embedded, open the film’s trailer search on YouTube.
+- **Community reviews.** Open **Reviews** on a film to read recent CineWatch reviews. Sign in to publish a rating from 1 to 10 and a review of up to 1,200 characters. You can edit or delete your review later.
 
 ## 🛠️ Technologies Used
 
 - **Backend Stack**
-  - Python 3.10
+  - Python 3.10+
   - Flask 3.1.0
   - Pandas 2.2.3
-  - Scikit-learn 1.6.1
-  - NumPy 1.26.4
+  - Scikit-learn 1.6.0
+  - NumPy
+  - SQLite or PostgreSQL for accounts, favorites and reviews
 
 - **Frontend Stack**
   - HTML5 & CSS3
@@ -48,7 +43,7 @@ Discover your next favorite movie with CineWatch - an intelligent movie recommen
   - TF-IDF Vectorization
   - Cosine Similarity
   - TMDB Dataset
-  - HDF5 Storage
+  - Cached sparse matrix and movie metadata
 
 - **API Integration**
   - TMDB API
@@ -75,33 +70,31 @@ Discover your next favorite movie with CineWatch - an intelligent movie recommen
    pip install -r requirements.txt
    ```
 
-3. (Optional) Set your TMDB API key to show cast, directors and age ratings. Get a free key at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api). The app works without it.
-   ```bash
-   # macOS / Linux
-   export TMDB_API_KEY=your_key_here
-   ```
-   ```powershell
-   # Windows PowerShell
-   $env:TMDB_API_KEY = "your_key_here"
-   ```
+3. Run the application from the repository root. The first local run processes the dataset and caches it in `app/models/`.
 
-4. Run the application:
    ```bash
    python app.py
    ```
 
-5. Open [http://localhost:5000](http://localhost:5000) in your browser
+4. Open `http://localhost:5000` in your browser. Local accounts, favorites and reviews are stored in `var/cinewatch.sqlite3`. To check the installation, run `python -m unittest discover -s tests -v`.
+
+### Optional services
+
+| Setting | Purpose |
+| --- | --- |
+| `TMDB_API_KEY` | Refresh selected film details from TMDB, including credits, trailers and review excerpts when available. Requests for the same film reuse successful results within a 15-minute window. [Get a TMDB API key](https://www.themoviedb.org/settings/api) |
+| `YOUTUBE_API_KEY` | Look up a trailer through the YouTube Data API when TMDB has no matching trailer. Without either key, the app provides a YouTube search link. |
+| `DATABASE_URL` | PostgreSQL connection URL for shared accounts, favorites and reviews. The application creates its tables on first use. |
+| `CINEWATCH_DB_PATH` | Override the SQLite database path when `DATABASE_URL` is unset. On a host, use a path on a persistent disk for a single service instance. |
+| `FLASK_SECRET_KEY` | Stable secret for signing guest watchlist cookies across restarts and instances. Local development generates and reuses a key automatically. |
 
 ### Deploying on Render
 
-Add `TMDB_API_KEY` under **Environment** in the Render dashboard. Never commit the key to the repository. On Render the app loads the 1,000-movie sample in `sample_data/` instead of the full dataset, to stay within the free plan's memory.
+The Blueprint defines a Gunicorn web service and a free PostgreSQL database named `cinewatch-accounts`. Create or sync the Blueprint to connect the database through `DATABASE_URL` and generate a stable `FLASK_SECRET_KEY`. Review the free database’s expiry and retention terms before storing user data. [Render Blueprint](render.yaml) · [Render free services](https://render.com/docs/free)
 
-**Staying awake:** Render's free plan stops a service after 15 minutes without traffic. On Render the app pings its own `/health` endpoint every 10 minutes to stay up (running all month uses about 744 of the free plan's 750 monthly hours). Optional environment variables:
+For a manually managed web service, set its build command to `pip install -r requirements.txt` and start command to `gunicorn app:app`. Set `DATABASE_URL` to your database’s internal connection URL and set a persistent `FLASK_SECRET_KEY` in **Environment**, then redeploy. Enter optional API keys there as needed. Until a persistent store is configured, hosted users can browse films and use their guest watchlist.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `KEEP_ALIVE` | `1` | Set to `0` to turn the self-ping off |
-| `KEEP_ALIVE_INTERVAL` | `600` | Seconds between pings (minimum 60) |
+Render and Vercel load the smaller catalog in `sample_data/`. After deployment, `GET /health` reports the loaded movie count and `GET /api/account` reports whether accounts are available. On Render the app pings its own health endpoint every 600 seconds by default. Set `KEEP_ALIVE=0` to disable the ping or `KEEP_ALIVE_INTERVAL` to change the interval in seconds (minimum 60).
 
 ### Content filtering
 
@@ -109,62 +102,19 @@ Films that TMDB flags as adult (pornographic) are removed from the dataset at lo
 
 ## 💡 How It Works
 
-### Content-Based Recommendation Engine
+**Find similar movies** compares each film’s genres, keywords and overview using TF-IDF and cosine similarity. It ranks the closest candidates using genre overlap and a quality score that accounts for both rating and number of votes.
 
-1. **Data Processing**
-   - Extracts features from movie metadata (genres, keywords, overview)
-   - Applies TF-IDF vectorization for text analysis
-   - Creates a rich feature matrix for similarity calculations
-
-2. **Recommendation Algorithm**
-   ```python
-   def get_recommendations(title, n=10):
-       # Get movie feature vector
-       movie_vector = tfidf_matrix[indices[title]]
-       
-       # Calculate similarity with all movies
-       sim_scores = cosine_similarity(movie_vector, tfidf_matrix)
-       
-       # Return top N similar movies
-       return get_top_movies(sim_scores, n)
-   ```
-
-3. **Performance Optimization**
-   - Efficient sparse matrix operations
-   - HDF5 caching for fast data loading
-   - Chunked processing for large datasets
-
-2. **Recommendation Engine**:
-   - Content-based filtering using cosine similarity
-   - Movies are recommended based on similarity in genres, keywords, and plot
-
-3. **User Interface**:
-   - Clean and intuitive interface built with Bootstrap
-   - Real-time search functionality
-   - Detailed movie information with posters
-   - Loading indicators with progress bars for better user experience
+**For you** starts with popular films. After you save favorites, it recommends other films liked by members with overlapping favorites, giving more weight to closer matches. Similar films from the catalog and popular titles fill any remaining spots. The feed excludes films already in your favorites.
 
 ## Dataset
 
-The system uses the TMDB movie dataset (v11) which includes information about movies such as:
+The system uses the TMDB movie dataset (v11) which includes the following movie information.
+
 - Title, overview, and release date
 - Genres and keywords
 - Vote average and vote count
 - Production companies and countries
 - Poster and backdrop images
-
-## Future Improvements
-
-- Implement collaborative filtering for more personalized recommendations
-- Add user authentication and favorite movie tracking
-- Integrate with external APIs for real-time movie data
-- Implement advanced filtering options (by genre, year, etc.)
-- Add movie trailers and reviews
-
-##check out live demo
-https://movie-recommender-v2-htgt.onrender.com/
-
-
 
 ## Motion artwork
 

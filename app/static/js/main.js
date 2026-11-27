@@ -9,6 +9,7 @@ $(document).ready(function() {
     let noticeTimer;
     let detailsSequence = 0;
     let modalOpener;
+    let pickHasAlternative = true;
 
     const searchInput = $('#search-input');
     const suggestions = $('#search-suggestions');
@@ -18,6 +19,43 @@ $(document).ready(function() {
     let discoveryRequest = null;
     let recommendationHistory = [];
     const pageSize = 12;
+    const filterForm = document.getElementById('catalog-filters');
+    let refinements = {};
+
+    function catalogFilters() {
+        const genre = document.querySelector('.genre-icon.active')?.dataset.genre || '';
+        return {...refinements, genre};
+    }
+
+    window.CineWatchFilters = {current: catalogFilters, clear: clearCatalogFilters};
+    $(document).on('cinewatch:open-movie', (_, movie, trigger, hasAlternative) => showMovieModal(movie, trigger, hasAlternative));
+
+    function applyRefinements(genre = catalogFilters().genre) {
+        refinements = Object.fromEntries(Array.from(new FormData(filterForm)).filter(([, value]) => value !== ''));
+        const count = Object.keys(refinements).length;
+        $('#refine-count').text(count ? count + ' active' : '');
+        document.getElementById('catalog-refine').open = false;
+        openView('browse', genre);
+    }
+
+    const firstYear = filterForm.elements.year_min;
+    const lastYear = filterForm.elements.year_max;
+    filterForm.addEventListener('input', () => lastYear.setCustomValidity(''));
+    filterForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (firstYear.value && lastYear.value && firstYear.valueAsNumber > lastYear.valueAsNumber) {
+            lastYear.setCustomValidity('Choose a year on or after the start year.');
+            lastYear.reportValidity();
+            return;
+        }
+        applyRefinements();
+    });
+    function clearCatalogFilters() {
+        filterForm.reset();
+        lastYear.setCustomValidity('');
+        applyRefinements('');
+    }
+    $('#reset-refinements').on('click', clearCatalogFilters);
 
     $('#movie-search-form').on('submit', function(event) {
         event.preventDefault();
@@ -69,6 +107,33 @@ $(document).ready(function() {
         recommendationHistory = [];
         dismissSuggestions();
         updateGenreChips(null);
+    });
+
+    const personalModes = ['for-you', 'favorites'];
+    let viewerId = null;
+    document.addEventListener('cinewatch:personal-view', (event) => {
+        if (personalModes.includes(event.detail)) openView(event.detail);
+    });
+    $('#personal-switch').on('click', () => openView(activeView?.mode === 'favorites' ? 'for-you' : 'favorites'));
+    document.addEventListener('cinewatch:account', (event) => {
+        const nextId = event.detail.user?.id ?? null;
+        if (viewerId !== nextId) {
+            recommendationHistory = [];
+            if (activeView && personalModes.includes(activeView.mode)) openView('default');
+        }
+        viewerId = nextId;
+    });
+    document.addEventListener('cinewatch:favorite-changed', () => {
+        if (activeView && personalModes.includes(activeView.mode)) {
+            // Refresh beneath an open detail sheet without moving keyboard focus.
+            activateView(activeView);
+            activeView.page = 0;
+            activeView.movies = [];
+            requestPage(activeView, 1);
+        }
+    });
+    document.addEventListener('cinewatch:reopen-movie', (event) => {
+        showMovieModal(event.detail, modalOpener, pickHasAlternative);
     });
 
     // Watchlist button events
@@ -213,23 +278,32 @@ $(document).ready(function() {
 
     function watchTrailer() {
         if (!currentMovie) return;
-        const title = currentMovie.title;
+        const {title, id, trailer} = currentMovie;
+        const sequence = detailsSequence;
         const panel = $('#trailer-panel').prop('hidden', false);
         const youtubeSearch = 'https://www.youtube.com/results?' + new URLSearchParams({search_query: title + ' official trailer'});
-        $('#trailer-link').attr('href', youtubeSearch);
+        const trailerLink = $('#trailer-link').attr('href', youtubeSearch);
+        trailerLink.find('span').text('Search YouTube');
         $('#trailer-status').text('Looking for a trailer…');
         $('#watchTrailerBtn').attr('aria-expanded', 'true').prop('disabled', true);
-        $.post('/get_trailer', {title}).done(function (data) {
-            if (currentMovie?.title !== title || panel.prop('hidden')) return;
+        function showTrailer(data) {
+            if (sequence !== detailsSequence || panel.prop('hidden')) return;
             if (typeof data.video_id === 'string' && /^[\w-]{11}$/.test(data.video_id)) {
                 $('#trailer-player').prop('hidden', false);
                 $('#trailerIframe').attr('src', 'https://www.youtube.com/embed/' + data.video_id);
+                trailerLink.attr('href', 'https://www.youtube.com/watch?v=' + data.video_id)
+                    .find('span').text('Watch on YouTube');
                 $('#trailer-status').text('');
             } else {
                 $('#trailer-status').text('Find the official trailer on YouTube.');
             }
-        }).fail(function () {
-            if (currentMovie?.title === title) $('#trailer-status').text('Trailer lookup is unavailable. You can still search YouTube.');
+        }
+        if (trailer) {
+            showTrailer(trailer);
+            return;
+        }
+        $.post('/get_trailer', {title, id}).done(showTrailer).fail(function () {
+            if (sequence === detailsSequence) $('#trailer-status').text('Trailer lookup is unavailable. You can still search YouTube.');
         });
     }
 
@@ -291,7 +365,7 @@ $(document).ready(function() {
         activeView = null;
         if (discoveryRequest) discoveryRequest.abort();
         discoveryRequest = null;
-        $('#default-movies-section, #browse-section, #search-results, #recommendations-section')
+        $('#default-movies-section, #browse-section, #search-results, #recommendations-section, #personal-section')
             .addClass('d-none').removeAttr('aria-busy');
         $('#loading').addClass('d-none');
         $('#discovery-announcement').empty();
@@ -308,10 +382,11 @@ $(document).ready(function() {
         }
         const sections = {
             default: '#default-movies-section', browse: '#browse-section',
-            search: '#search-results', recommend: '#recommendations-section'
+            search: '#search-results', recommend: '#recommendations-section',
+            'for-you': '#personal-section', favorites: '#personal-section'
         };
         const section = $(sections[mode]);
-        const view = { mode, value, movieId, section, grid: section.children('.row').first(), page: 0, movies: [], hasMore: false };
+        const view = { mode, value, movieId, filters: {...refinements}, section, grid: section.children('.row').first(), page: 0, movies: [], hasMore: false };
         activateView(view);
         if (mode !== 'default') scrollToResults(view);
         requestPage(view, 1);
@@ -328,6 +403,11 @@ $(document).ready(function() {
         if (mode === 'search') heading.text('Results for “' + value + '”');
         if (mode === 'recommend') heading.text('More like ' + value);
         if (mode === 'browse') heading.text(value ? value + ' films' : 'All films');
+        if (personalModes.includes(mode)) {
+            heading.text(mode === 'for-you' ? 'For you' : 'Favorite films');
+            $('#personal-switch').text(mode === 'for-you' ? 'View favorites' : 'View recommendations');
+            $('#personal-basis').text(view.explanation || '');
+        }
         heading.attr('tabindex', '-1');
         section.children('.discovery-back, .discovery-feedback').remove();
         if (mode === 'recommend' && recommendationHistory.length) {
@@ -372,8 +452,10 @@ $(document).ready(function() {
             });
         }
         if (view.mode === 'recommend') return $.post('/recommend?view=card', { title: view.value, id: view.movieId });
+        if (view.mode === 'for-you') return $.getJSON('/api/for-you');
+        if (view.mode === 'favorites') return $.getJSON('/api/favorites');
         if (view.mode === 'default') return $.getJSON('/default_movies', { view: 'card' });
-        return $.getJSON('/movies', { view: 'card', genre: view.value, page });
+        return $.getJSON('/movies', { ...view.filters, view: 'card', genre: view.value, page });
     }
 
     function requestPage(view, page) {
@@ -387,8 +469,18 @@ $(document).ready(function() {
             footer.text('Loading more films…');
         }
         discoveryRequest = pageRequest(view, page);
-        discoveryRequest.done(function(movies) {
+        discoveryRequest.done(function(response) {
             if (activeView !== view) return;
+            const movies = personalModes.includes(view.mode) ? response.movies : response;
+            if (view.mode === 'for-you') {
+                const explanations = {
+                    shared_favorites: 'Picked from films loved by viewers with similar favorites.',
+                    similar_films: 'Picked for their similarity to your favorite films.',
+                    popular: 'Popular picks to start. Mark films as favorites to personalize your recommendations.'
+                };
+                view.explanation = explanations[response.basis] || '';
+                $('#personal-basis').text(view.explanation);
+            }
             view.page = page;
             view.hasMore = (view.mode === 'browse' || view.mode === 'search') && movies.length === pageSize;
             view.movies.push(...movies);
@@ -417,12 +509,13 @@ $(document).ready(function() {
     function renderFooter(view) {
         const footer = view.section.children('.discovery-feedback').empty();
         if (!view.movies.length) {
-            const message = view.mode === 'search' ? 'No films matched “' + view.value + '”. Try another title.'
+            const message = view.mode === 'favorites' ? 'Choose Add to favorites in a film’s details to keep it here.'
+                : view.mode === 'search' ? 'No films matched “' + view.value + '”. Try another title.'
                 : view.mode === 'recommend' ? 'No similar films found for this title.' : 'No films found.';
             $('<p>', { text: message }).appendTo(footer);
             const isSearch = view.mode === 'search';
             $('<button>', { type: 'button', 'class': 'btn btn-glass', text: isSearch ? 'Edit search' : 'Browse all films' })
-                .on('click', () => isSearch ? searchInput.trigger('focus').trigger('select') : openView('browse'))
+                .on('click', () => isSearch ? searchInput.trigger('focus').trigger('select') : clearCatalogFilters())
                 .appendTo(footer);
         } else if (view.hasMore) {
             $('<button>', {
@@ -463,11 +556,15 @@ $(document).ready(function() {
     }
 
     function fillMovieDetails(movie) {
+        document.dispatchEvent(new CustomEvent('cinewatch:movie', {detail: movie}));
         $('#movieModalLabel').text(movie.title);
         $('#movieGenres').text(formatGenres(movie.genres));
         $('#movieOverview').text(movie.overview || 'An overview is unavailable for this film.');
         const rating = ratingText(movie.vote_average);
-        $('#movieRating').prop('hidden', !rating).find('span').text(rating + ' / 10');
+        const ratingLabel = movie.tmdb_status === 'updated' && Number.isInteger(movie.vote_count) && movie.vote_count > 0
+            ? rating + ' / 10 · ' + movie.vote_count.toLocaleString() + ' TMDB votes'
+            : rating + ' / 10';
+        $('#movieRating').prop('hidden', !rating).find('span').text(ratingLabel);
         $('#movieAgeRating').prop('hidden', !movie.age_rating || movie.age_rating === 'Not Rated').text(movie.age_rating);
         $('#movieYear').prop('hidden', !movie.year).text(movie.year || '');
         $('#movieRuntime').prop('hidden', !movie.runtime).text(movie.runtime ? movie.runtime + ' min' : '');
@@ -479,12 +576,18 @@ $(document).ready(function() {
         styleSaveButton($('#addToWatchlistBtn'), movie, true);
     }
 
-    function showMovieModal(movie, trigger) {
+    function showMovieModal(movie, trigger, hasAlternative = true) {
         currentMovie = movie;
         modalOpener = trigger;
+        pickHasAlternative = hasAlternative;
+        const fromPicker = trigger?.id === 'pick-film';
+        const onlyMatch = fromPicker && !hasAlternative;
+        $('#pick-another').prop('hidden', !fromPicker || !hasAlternative);
+        $('#pick-again-status').text(onlyMatch ? 'Only one film matches these filters.' : '').prop('hidden', !onlyMatch);
         const sequence = ++detailsSequence;
         setPoster($('#moviePoster'), movie, false);
         fillMovieDetails(movie);
+        $('#trailerIframe').removeAttr('src');
         $('#trailer-panel, #trailer-player').prop('hidden', true);
         $('#watchTrailerBtn').attr('aria-expanded', 'false').prop('disabled', false);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('movieModal')).show();

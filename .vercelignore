@@ -32,4 +32,8 @@ app/models/
 *.md
 !README.md
 Cinewatch.png
-CineWatch_Figma_Components.txt 
+CineWatch_Figma_Components.txt
+
+# Local database and signing key
+var/
+tests/

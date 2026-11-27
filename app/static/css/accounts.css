@@ -1,0 +1,54 @@
+#account-entry[hidden], #favorite-movie[hidden], #account-dialog:not([open]), #account-dialog [hidden] { display: none; }
+#account-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(26rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    padding: 2rem;
+    color: #261c2c;
+    background: #f5f2eb;
+    border: 1px solid #c5babb;
+    border-radius: 1rem;
+    box-shadow: 0 20px 70px #1d102654;
+    color-scheme: light;
+}
+#account-dialog::backdrop { background: #100a17b8; }
+#account-title { padding-right: 2rem; margin: 0 0 .65rem; color: inherit; font: 500 2.3rem/1.08 Georgia, serif; letter-spacing: -.055em; }
+#account-intro, #account-message { color: #5f525f; font-size: .9rem; }
+#account-message:empty, #favorite-message:empty, #personal-basis:empty { display: none; }
+#account-message:not(:empty) { margin: .85rem 0 0; color: #6f3148; }
+#account-form, #account-profile { display: grid; gap: .7rem; }
+#account-form label { margin: .25rem 0 -.4rem; font-weight: 650; font-size: .86rem; }
+#account-form input {
+    width: 100%; padding: .65rem .8rem;
+    background: #fffdf9; color: #281e2e;
+    border: 1px solid #aca1a8; border-radius: .5rem;
+}
+.account-primary, .account-secondary, .account-close, .account-link {
+    min-height: 44px;
+    font: 650 .9rem var(--cw-font-body);
+    border: 1px solid #b4a3b3;
+    border-radius: .65rem;
+}
+.account-primary { color: #fff8fb; background: #38263b; border-color: #38263b; }
+#account-submit { margin-top: .5rem; }
+.account-primary:hover { background: #503751; }
+.account-secondary, .account-close { color: #352437; background: transparent; }
+.account-secondary:hover, .account-close:hover { background: #ebe4e7; }
+.account-close { position: absolute; right: .8rem; top: .8rem; width: 44px; border-radius: 50%; }
+.account-link { color: #5a3855; background: transparent; border-color: transparent; text-decoration: underline; text-underline-offset: .2em; }
+#account-dialog button:disabled { opacity: .6; }
+#account-retry { margin-top: .5rem; }
+#account-dialog :focus-visible { outline: 3px solid #8952ad; outline-offset: 2px; }
+.personal-heading-row { display: flex; align-items: center; gap: 1rem; justify-content: space-between; flex-wrap: wrap; }
+#personal-basis { color: #645564; font-size: .88rem; margin-top: .45rem; }
+#favorite-movie[aria-pressed="true"] { color: #6d2248; border-color: #ae7696; background: #f4dee8; }
+#favorite-message { margin: 0; font-size: .82rem; color: #6d3148; }
+@media (max-width: 750px) {
+    #account-entry { min-width: 40px; justify-content: center; }
+    #account-entry span { display: none; }
+}
+@media (max-width: 440px) {
+    .watchlist-action > span:not(.list-count) { display: none; }
+}

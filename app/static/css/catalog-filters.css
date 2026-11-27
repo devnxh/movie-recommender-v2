@@ -1,0 +1,47 @@
+.catalog-refine {
+    margin-top: .75rem;
+    color: var(--ink, #211c2d);
+}
+.catalog-refine summary {
+    width: fit-content;
+    min-height: 36px;
+    padding: .35rem .2rem;
+    font: 650 .86rem var(--cw-font-body);
+    cursor: pointer;
+}
+.catalog-refine summary::marker { color: #715b79; }
+#refine-count:not(:empty) { margin-left: .5rem; color: #65556a; font-weight: 500; }
+.refine-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: .85rem;
+    padding: .75rem 0 .2rem;
+    color-scheme: light;
+}
+.refine-form label { display: grid; gap: .3rem; font-size: .8rem; font-weight: 650; }
+.refine-form :is(input, select) {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid #a99eaa;
+    border-radius: .45rem;
+    background: #fffdf9;
+    color: #211c2d;
+    padding: .4rem .65rem;
+    font: 500 .9rem var(--cw-font-body);
+}
+.refine-actions { grid-column: 1 / -1; display: flex; gap: .65rem; flex-wrap: wrap; }
+.refine-actions button {
+    min-height: 40px;
+    padding: .45rem 1rem;
+    border-radius: 2rem;
+    border: 1px solid #4b3c51;
+    color: #fff;
+    background: #37263e;
+    font: 650 .82rem var(--cw-font-body);
+}
+.refine-actions #reset-refinements { background: transparent; color: #483b4e; }
+.refine-actions button:hover { border-color: #725481; box-shadow: inset 0 0 0 1px #725481; }
+@media (max-width: 575px) {
+    .refine-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .refine-form :is(input, select) { font-size: 1rem; }
+}

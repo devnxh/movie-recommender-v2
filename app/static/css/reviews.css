@@ -1,0 +1,18 @@
+.movie-reviews {
+    margin-top: 1.1rem;
+    border-top: 1px solid var(--cw-border);
+}
+.movie-reviews summary { min-height: 44px; padding: .8rem 0; font-weight: 650; cursor: pointer; }
+.review-section { margin: .6rem 0 1.15rem; }
+.review-section h3 { font: 650 .95rem var(--cw-font-body); color: var(--print-ink); margin-bottom: .5rem; }
+.review-section :is(p, a, label) { color: var(--cw-text-muted); font-size: .85rem; }
+.review-section article { border-left: 2px solid var(--cw-border); padding: 0 0 0 .7rem; margin: .8rem 0; }
+.review-section article p { margin: .3rem 0; white-space: pre-line; overflow-wrap: anywhere; }
+.review-section article strong { font-size: .82rem; overflow-wrap: anywhere; }
+.review-section article a, #tmdb-reviews-link { text-underline-offset: .15rem; }
+#review-status:empty { margin: 0; }
+#review-form { display: grid; gap: .45rem; }
+#review-form[hidden], .movie-reviews [hidden] { display: none; }
+#review-form :is(select, textarea) { padding: .55rem; min-height: 40px; border: 1px solid #b7aab4; border-radius: .45rem; background: #fffdfa; color: #2c202f; font-size: .9rem; }
+#review-form textarea { resize: vertical; }
+.review-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
